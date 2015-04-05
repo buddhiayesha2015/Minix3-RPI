@@ -2,34 +2,17 @@
  *				Mined.h					  *
  *========================================================================*/
 
-#include <minix/config.h>
+
 #include <sys/types.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <termcap.h>
 #include <unistd.h>
 #include <limits.h>
-
-#ifndef YMAX
-#ifdef UNIX
 #include <stdio.h>
-#undef putchar
-#undef getchar
-#undef NULL
-#undef EOF
-extern char *CE, *VS, *SO, *SE, *CL, *AL, *CM;
-#define YMAX		49
-#else
-#define YMAX		24		/* Maximum y coordinate starting at 0 */
-/* Escape sequences. */
-extern char *enter_string;	/* String printed on entering mined */
-extern char *rev_video;		/* String for starting reverse video */
-extern char *normal_video;	/* String for leaving reverse video */
-extern char *rev_scroll;	/* String for reverse scrolling */
-extern char *pos_string;	/* Absolute cursor positioning */
-#define X_PLUS	' '		/* To be added to x for cursor sequence */
-#define Y_PLUS	' '		/* To be added to y for cursor sequence */
-#endif /* UNIX */
 
+extern char *CE, *VS, *SO, *SE, *CL, *AL, *CM;
+#define YMAX		49		/* Maximum y coordinate starting at 0 */
 #define XMAX		79		/* Maximum x coordinate starting at 0*/
 #define SCREENMAX	(YMAX - 1)	/* Number of lines displayed */
 #define XBREAK		(XMAX - 0)	/* Line shift at this coordinate */
@@ -53,10 +36,6 @@ extern char *pos_string;	/* Absolute cursor positioning */
 #define NO_INPUT	(ERRORS + 2)
 
 #define STD_OUT	 	1		/* File descriptor for terminal */
-
-#if defined(__i386__)
-#define MEMORY_SIZE	(50 * 1024)	/* Size of data space to malloc */
-#endif
 
 #define REPORT	2			/* Report change of lines on # lines */
 
@@ -127,8 +106,6 @@ struct regex {
 
 typedef struct regex REGEX;
 
-/* NULL definitions */
-
 /*
  * Forward declarations
  */
@@ -169,12 +146,12 @@ extern long chars_saved;		/* Nr of chars saved in buffer */
 /*
  * Print character on terminal
  */
-#define putchar(c)			(void) write_char(STD_OUT, (c))
+#define putch(c)			_putch((c))
 
 /*
  * Ring bell on terminal
  */
-#define ring_bell()			putchar('\07')
+#define ring_bell()			putch('\a')
 
 /*
  * Print string on terminal
@@ -235,8 +212,6 @@ extern long chars_saved;		/* Nr of chars saved in buffer */
  */
 #define get_shift(cnt)		((cnt) & DUMMY_MASK)
 
-#endif /* YMAX */
-
 /* mined1.c */
 
 void FS(void);
@@ -256,7 +231,7 @@ void copy_string(char *to, char *from );
 void reset(LINE *head_line, int screen_y );
 void set_cursor(int nx, int ny );
 void open_device(void);
-int getchar(void);
+int getch(void);
 void display(int x_coord, int y_coord, LINE *line, int count );
 int write_char(int fd, int c );
 int writeline(int fd, char *text );
@@ -269,13 +244,6 @@ void raw_mode(FLAG state );
 void panic(char *message );
 char *alloc(int bytes );
 void free_space(char *p );
-/*
-#ifdef UNIX
-void(*key_map [128]) (void);
-#else
-void(*key_map [256]) (void);
-#endif
-*/
 void initialize(void);
 char *basename(char *path );
 void load_file(char *file );
@@ -290,26 +258,22 @@ int ask_save(void);
 int line_number(void);
 void file_status(char *message, long count, char *file, int lines, FLAG
 	writefl, FLAG changed );
-#if __STDC__
 void build_string(char *buf, char *fmt, ...);
-#else
-void build_string();
-#endif
 char *num_out(long number );
 int get_number(char *message, int *result );
 int input(char *inbuf, FLAG clearfl );
 int get_file(char *message, char *file );
-int _getchar(void);
+int _getch(void);
 void _flush(void);
-void _putchar(int c );
+int _putch(int c );
 void get_term(void);
 
 /* mined2.c */
 
-void UP(void);
-void DN(void);
-void LF(void);
-void RT(void);
+void UP1(void);
+void DN1(void);
+void LF1(void);
+void RT1(void);
 void HIGH(void);
 void LOW(void);
 void BL(void);

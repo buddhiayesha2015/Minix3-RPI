@@ -636,6 +636,7 @@
 ./usr/games/ppt				minix-sys
 ./usr/games/primes			minix-sys
 ./usr/games/random			minix-sys
+./usr/games/rogue			minix-sys
 ./usr/games/snake			minix-sys
 ./usr/games/snscore			minix-sys
 ./usr/games/strfile			minix-sys
@@ -1953,15 +1954,14 @@
 ./usr/lib/bc/libddekit_usb_server.a	minix-sys	bitcode
 ./usr/lib/bc/libdevman.a		minix-sys	bitcode
 ./usr/lib/bc/libedit.a			minix-sys	bitcode
-./usr/lib/bc/libevent.a			minix-sys	bitcode
-./usr/lib/bc/libexpat.a			minix-sys	bitcode
-./usr/lib/bc/libfsdriver.a		minix-sys	bitcode
-./usr/lib/bc/libpci.a			minix-sys	bitcode
 ./usr/lib/bc/libelf.a			minix-sys	bitcode
+./usr/lib/bc/libevent.a			minix-sys	bitcode
 ./usr/lib/bc/libexec.a			minix-sys	bitcode
 ./usr/lib/bc/libexecinfo.a		minix-sys	bitcode
+./usr/lib/bc/libexpat.a			minix-sys	bitcode
 ./usr/lib/bc/libfetch.a			minix-sys	bitcode
 ./usr/lib/bc/libform.a			minix-sys	bitcode
+./usr/lib/bc/libfsdriver.a		minix-sys	bitcode
 ./usr/lib/bc/libgcc_s.a			minix-sys	bitcode
 ./usr/lib/bc/libhgfs.a			minix-sys	bitcode
 ./usr/lib/bc/libiberty.a		minix-sys	bitcode,binutils
@@ -1982,6 +1982,7 @@
 ./usr/lib/bc/libnetdriver.a		minix-sys	bitcode
 ./usr/lib/bc/libnetsock.a		minix-sys	bitcode
 ./usr/lib/bc/libopcodes.a		minix-sys	bitcode,binutils
+./usr/lib/bc/libpci.a			minix-sys	bitcode
 ./usr/lib/bc/libprop.a			minix-sys	bitcode
 ./usr/lib/bc/libpuffs.a			minix-sys	bitcode
 ./usr/lib/bc/librefuse.a		minix-sys	bitcode
@@ -2519,6 +2520,7 @@
 ./usr/man/man1/md5.1			minix-sys
 ./usr/man/man1/menuc.1			minix-sys
 ./usr/man/man1/mesg.1			minix-sys
+./usr/man/man1/mined.1			minix-sys
 ./usr/man/man1/ministat.1		minix-sys
 ./usr/man/man1/mixer.1			minix-sys
 ./usr/man/man1/mkdep.1			minix-sys
@@ -2686,11 +2688,11 @@
 ./usr/man/man1/zless.1			minix-sys
 ./usr/man/man1/zmore.1			minix-sys
 ./usr/man/man1/znew.1			minix-sys
-./usr/man/man1x				minix-sys
-./usr/man/man1x/awk.1x			minix-sys
-./usr/man/man1x/kermit.1x		minix-sys
-./usr/man/man1x/macros.1x		minix-sys
-./usr/man/man1x/mined.1x		minix-sys
+./usr/man/man1x				minix-sys	obsolete
+./usr/man/man1x/awk.1x			minix-sys	obsolete
+./usr/man/man1x/kermit.1x		minix-sys	obsolete
+./usr/man/man1x/macros.1x		minix-sys	obsolete
+./usr/man/man1x/mined.1x		minix-sys	obsolete
 ./usr/man/man2				minix-sys
 ./usr/man/man2/accept.2			minix-sys
 ./usr/man/man2/access.2			minix-sys
@@ -5174,6 +5176,7 @@
 ./usr/man/man6/ppt.6				minix-sys
 ./usr/man/man6/primes.6				minix-sys
 ./usr/man/man6/random.6				minix-sys
+./usr/man/man6/rogue.6				minix-sys
 ./usr/man/man6/snake.6				minix-sys
 ./usr/man/man6/tetris.6				minix-sys
 ./usr/man/man6/wargames.6			minix-sys
@@ -5215,6 +5218,7 @@
 ./usr/man/man8/fbdctl.8				minix-sys
 ./usr/man/man8/fdisk.8				minix-sys
 ./usr/man/man8/fingerd.8			minix-sys
+./usr/man/man8/fix.8			minix-sys
 ./usr/man/man8/fsck.8				minix-sys
 ./usr/man/man8/fsck_ext2fs.8			minix-sys
 ./usr/man/man8/ftpd.8				minix-sys
@@ -5414,6 +5418,9 @@
 ./usr/share/doc/usd/03.shell/t3		minix-sys
 ./usr/share/doc/usd/03.shell/t4		minix-sys
 ./usr/share/doc/usd/03.shell/t.mac	minix-sys
+./usr/share/doc/usd/30.rogue		minix-sys
+./usr/share/doc/usd/30.rogue/Makefile	minix-sys
+./usr/share/doc/usd/30.rogue/rogue.me	minix-sys
 ./usr/share/examples			minix-sys
 ./usr/share/examples/atf		minix-sys	atf
 ./usr/share/examples/atf/atf-run.hooks	minix-sys	atf,!kyua

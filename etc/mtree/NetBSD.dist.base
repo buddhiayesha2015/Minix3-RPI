@@ -110,7 +110,6 @@
 ./usr/log
 ./usr/man
 ./usr/man/man1
-./usr/man/man1x
 ./usr/man/man2
 ./usr/man/man3
 ./usr/man/man4
@@ -135,6 +134,7 @@
 ./usr/share/doc/psd/19.curses
 ./usr/share/doc/usd
 ./usr/share/doc/usd/03.shell
+./usr/share/doc/usd/30.rogue
 ./usr/share/examples
 ./usr/share/examples/tmux
 ./usr/share/info
