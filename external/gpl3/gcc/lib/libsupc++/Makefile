@@ -1,19 +1,26 @@
-#	$NetBSD: Makefile,v 1.4 2011/08/09 13:00:04 joerg Exp $
+#	$NetBSD: Makefile,v 1.5 2013/08/23 05:02:46 matt Exp $
 
 REQUIRETOOLS=	yes
 NOLINT=		# defined
 NOPIC=		# defined
 NOPROFILE=	# defined
 
+.if defined(__MINIX)
+NOGCCERROR=yes
+NOCLANGERROR=yes
+.endif
+
 CWARNFLAGS.clang+=	-Wno-parentheses
 UNSUPPORTED_COMPILER.clang=	# defined
 
 .include <bsd.own.mk>
 
+GCC_MACHINE_ARCH?=${MACHINE_ARCH:S/earmv5/earm/}
+
 LIB=		supc++
 
-.if exists(${.CURDIR}/../libstdc++-v3/arch/${MACHINE_ARCH}/defs.mk) && ${MKGCC} != "no"
-.include "${.CURDIR}/../libstdc++-v3/arch/${MACHINE_ARCH}/defs.mk"
+.if exists(${.CURDIR}/../libstdc++-v3/arch/${GCC_MACHINE_ARCH}/defs.mk) && ${MKGCC} != "no"
+.include "${.CURDIR}/../libstdc++-v3/arch/${GCC_MACHINE_ARCH}/defs.mk"
 
 SHLIB_MAJOR=	1
 SHLIB_MINOR=	0
@@ -37,9 +44,9 @@ CLEANFILES+= unwind.h
 .PATH:	${DIST}/libstdc++-v3/src \
 	${DIST}/libstdc++-v3/libsupc++ \
 	${DIST}/libiberty \
-	${.CURDIR}/../libstdc++-v3/arch/${MACHINE_ARCH}
+	${.CURDIR}/../libstdc++-v3/arch/${GCC_MACHINE_ARCH}
 
-${OBJS}: ${.CURDIR}/../libstdc++-v3/arch/${MACHINE_ARCH}/defs.mk
+${OBJS}: ${.CURDIR}/../libstdc++-v3/arch/${GCC_MACHINE_ARCH}/defs.mk
 .else
 .include <bsd.prog.mk> # do nothing
 .endif

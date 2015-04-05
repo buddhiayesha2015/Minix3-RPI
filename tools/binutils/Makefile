@@ -25,6 +25,26 @@ ALL_TARGET+=	all-gprof
 INSTALL_TARGET+=install-gprof
 .endif
 
+.if defined(__MINIX)
+ALL_TARGET+=	all-gold
+INSTALL_TARGET+=install-gold
+
+CONFIGURE_ARGS+=	\
+	--enable-lto \
+	--enable-plugins
+# LSC: Here we use the MK variable, as we have to select the right default
+#      linker. Problem is, when Gold is not seen, USE_BITCODE is forced to
+#      "no".
+.if ${MKBITCODE:Uno} == "yes"
+CONFIGURE_ARGS+= \
+	--enable-ld=yes \
+	--enable-gold=default
+.else
+CONFIGURE_ARGS+= \
+	--enable-ld=default \
+	--enable-gold=yes
+.endif # ${MKBITCODE:Uno} == "yes"
+.endif # defined(__MINIX)
 .include "${.CURDIR}/../Makefile.gnuhost"
 
 CCADDFLAGS=	-I${DESTDIR}/usr/include -L${DESTDIR}/lib -L${DESTDIR}/usr/lib -B${DESTDIR}/usr/lib/

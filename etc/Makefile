@@ -1,4 +1,4 @@
-#	$NetBSD: Makefile,v 1.398 2012/08/17 16:59:26 riz Exp $
+#	$NetBSD: Makefile,v 1.410 2013/08/19 16:34:29 matt Exp $
 #	from: @(#)Makefile	8.7 (Berkeley) 5/25/95
 
 # Environment variables without default values:
@@ -55,7 +55,7 @@ DISTRIBVER!=	${HOST_SH} ${NETBSDSRCDIR}/sys/conf/osrelease.sh
 .if !defined(__MINIX)
 # LSC: We do not yet support iso creation anyway, then do not try to find it.
 .if !defined(MKISOFS)
-MKISOFS!=       (which mkisofs || echo true)
+MKISOFS!=       (which mkisofs || echo true) 2>/dev/null
 .endif
 DISTRIBREV!=	${HOST_SH} ${KERNSRCDIR}/conf/osrelease.sh -s
 # ISO 9660 volume ID.  Note that this can only contain [A-Z0-9_].
@@ -97,17 +97,17 @@ BIN1+=	boot.cfg.default \
 	protocols rc rc.cd rc.subr \
 	rc.daemons.dist rs.inet rs.single \
 	services shells syslog.conf \
-	termcap utmp
+	termcap utmp gettytab rc.shutdown
 .else
 BIN1+=	bootptab changelist csh.cshrc csh.login \
 	csh.logout daily daily.conf dm.conf envsys.conf floppytab ftpchroot \
 	ftpusers gettytab gpio.conf group hosts hosts.lpd inetd.conf \
 	locate.conf login.conf mailer.conf man.conf monthly monthly.conf \
 	mrouted.conf named.conf netconfig networks newsyslog.conf \
-	nsswitch.conf ntp.conf passwd.conf phones printcap profile protocols \
-	rbootd.conf rc rc.conf rc.local rc.subr rc.shutdown remote rpc \
-	security security.conf services shells shrc sysctl.conf syslog.conf \
-	weekly weekly.conf wscons.conf
+	nsswitch.conf ntp.conf passwd.conf pkgpath.conf phones printcap \
+	profile protocols rbootd.conf rc rc.conf rc.local rc.subr \
+	rc.shutdown remote rpc security security.conf services shells \
+	shrc sysctl.conf syslog.conf weekly weekly.conf wscons.conf
 
 # Use machine-specific disktab if it exists, or the MI one otherwise
 .if exists(etc.${MACHINE}/disktab)
@@ -116,7 +116,7 @@ BIN1+=	etc.${MACHINE}/disktab
 BIN1+=	disktab
 .endif
 
-.if exists(etc.${MACHINE}/ld.so.conf)
+.if exists(etc.${MACHINE}/ld.so.conf) && empty(MACHINE_ARCH:M*arm*hf*)
 BIN1+=	etc.${MACHINE}/ld.so.conf
 .endif
 
@@ -125,21 +125,8 @@ BIN1+=	etc.${MACHINE}/ttyaction
 .endif
 
 # -rw-rw-r--
-.if !empty(DISTRIBVER:M*.99.*)
-BIN2+=	motd.current
-FILESNAME_motd.current=	motd
-.elif !empty(DISTRIBVER:M*BETA*)
-BIN2+=	motd.beta
-FILESNAME_motd.beta=	motd
-.elif !empty(DISTRIBVER:M*RC*)
-BIN2+=	motd.rc
-FILESNAME_motd.rc=	motd
-.elif !empty(DISTRIBVER:M*STABLE*)
-BIN2+=	motd.stable
-FILESNAME_motd.stable=	motd
-.else
 BIN2+=	motd
-.endif
+FILESBUILD_motd=	YES
 
 # -rw-------
 BIN3+=	hosts.equiv
@@ -184,6 +171,26 @@ distribution: .PHONY .MAKE check_DESTDIR distrib-dirs
 .endif	# !DISTRIBUTION_DONE
 
 
+.if !defined(__MINIX)
+# motd is copied from a different ${MOTD_SOURCE} depending on DISTRIBVER
+#
+.if !empty(DISTRIBVER:M*.99.*)
+MOTD_SOURCE=	motd.current
+.elif !empty(DISTRIBVER:M*BETA*)
+MOTD_SOURCE=	motd.beta
+.elif !empty(DISTRIBVER:M*RC*)
+MOTD_SOURCE=	motd.rc
+.elif !empty(DISTRIBVER:M*STABLE*)
+MOTD_SOURCE=	motd.stable
+.else
+MOTD_SOURCE=	motd.default
+.endif
+CLEANFILES+= motd
+motd: ${.CURDIR}/${MOTD_SOURCE} ${_NETBSD_VERSION_DEPENDS}
+	${_MKTARGET_CREATE}
+	${HOST_INSTALL_FILE} ${.CURDIR}/${MOTD_SOURCE} ${.TARGET}
+.endif # !defined(__MINIX)
+
 CLEANFILES+=	MAKEDEV
 .if !defined(__MINIX)
 MAKEDEV: ${.CURDIR}/MAKEDEV.awk ${.CURDIR}/MAKEDEV.tmpl \
@@ -194,47 +201,15 @@ MAKEDEV: ${.CURDIR}/MAKEDEV.awk ${.CURDIR}/MAKEDEV.tmpl \
 	    ${TOOL_AWK} -f ${.CURDIR}/MAKEDEV.awk ${.CURDIR}/MAKEDEV.tmpl \
 	    > ${.TARGET}
 .else
-MAKEDEV:
+MAKEDEV: .PHONY
 	if [ ${MKUNPRIVED} != "yes" ]; then \
-		cd ${DESTDIR}/dev && sh ${NETBSDSRCDIR}/commands/MAKEDEV/MAKEDEV.sh null ;\
-		cd ${DESTDIR}/dev && sh ${NETBSDSRCDIR}/commands/MAKEDEV/MAKEDEV.sh std  2>/dev/null ;\
+		cd ${DESTDIR}/dev && sh ${NETBSDSRCDIR}/minix/commands/MAKEDEV/MAKEDEV.sh -s; \
+	else \
+		sh ${NETBSDSRCDIR}/minix/commands/MAKEDEV/MAKEDEV.sh -m -s >> ${DESTDIR}/METALOG; \
 	fi
 .endif # !defined(__MINIX)
 
-RELEASEVARS=	BSDOBJDIR BSDSRCDIR BUILDID \
-		DESTDIR EXTERNAL_TOOLCHAIN HAVE_GCC HAVE_GDB \
-		INSTALLWORLDDIR \
-		KERNARCHDIR KERNCONFDIR KERNOBJDIR KERNSRCDIR \
-		MACHINE MACHINE_ARCH MAKE MAKECONF MAKEFLAGS \
-		MAKEOBJDIR MAKEOBJDIRPREFIX MAKEVERBOSE \
-		MKBFD MKBINUTILS MKCATPAGES \
-		MKCRYPTO MKCRYPTO_RC5 MKCVS \
-		MKDEBUG MKDEBUGLIB MKDOC MKDTRACE MKDYNAMICROOT \
-		MKGCC MKGCCCMDS MKGDB \
-		MKHESIOD MKHTML MKIEEEFP MKINET6 MKINFO MKIPFILTER \
-		MKKERBEROS MKLDAP MKLINKLIB MKLINT \
-		MKMAN MKMANZ MKMDNS MKNLS MKNPF MKOBJ MKOBJDIRS \
-		MKPAM MKPF MKPIC MKPICINSTALL MKPICLIB MKPOSTFIX MKPROFILE \
-		MKSHARE MKSKEY MKSOFTFLOAT MKSTATICLIB \
-		MKUNPRIVED MKUPDATE MKX11 MKYP \
-		NBUILDJOBS NETBSDSRCDIR \
-		NOCLEANDIR NODISTRIBDIRS NOINCLUDES \
-		OBJMACHINE \
-		RELEASEDIR RELEASEMACHINEDIR TOOLCHAIN_MISSING TOOLDIR \
-		USE_HESIOD USE_INET6 USE_JEMALLOC USE_KERBEROS USE_LDAP \
-		USE_PAM USE_SKEY USE_YP \
-		USETOOLS USR_OBJMACHINE \
-		X11SRCDIR X11FLAVOUR
-
-params: .PHONY
-.for var in ${RELEASEVARS}
-.if defined(${var})
-	@printf "%20s = '%-s'\n" ${var} ${${var}:Q}
-.else
-	@printf "%20s = (undefined)\n" ${var}
-.endif
-.endfor
-
+.include "${NETBSDSRCDIR}/etc/Makefile.params"
 CLEANFILES+=	etc-release
 etc-release: .EXEC .MAKE
 	${_MKTARGET_CREATE}
@@ -246,7 +221,7 @@ etc-release: .EXEC .MAKE
 		printf "%20s   %s\n"  "Build date" "$$(date -u)"; \
 		printf "%20s   %s\n"  "Built by" "$${USER-root}@$$(hostname)"; \
 		echo ; \
-		(cd ${.CURDIR}; ${MAKE} ${MFLAGS} -j1 params); \
+		${PRINT_PARAMS} ; \
 	) >${.OBJDIR}/${.TARGET}
 
 install-etc-release: .PHONY etc-release
@@ -298,12 +273,8 @@ CONFIGSYMLINKS+=	${TZDIR}/${LOCALTIME}	/etc/localtime \
 			/usr/sbin/rmt		/etc/rmt
 .else
 CONFIGSYMLINKS+=	\
-			/usr/lib/cpp		/lib/cpp \
 			/usr/log		/var/log \
 			/usr/tmp		/var/tmp \
-			/usr/pkg/bin/clang	/usr/bin/cc \
-			/usr/pkg/bin/strip	/usr/bin/strip \
-			/dev/kbdaux		/dev/mouse \
 			/proc/mounts		/etc/mtab
 
 .endif # !defined(__MINIX)
@@ -320,8 +291,10 @@ install-etc-files: .PHONY .MAKE check_DESTDIR MAKEDEV
 	    ${DESTDIR}/etc/master.passwd
 .if ${MKUNPRIVED} != "no"
 	( \
-		for metaent in passwd pwd.db spwd.db; do \
-	    		echo "./etc/$${metaent} type=file mode=0644 uname=root gname=operator tags=etc_pkg"; \
+		mode=0600; \
+		for metaent in spwd.db passwd pwd.db; do \
+	    		echo "./etc/$${metaent} type=file mode=$${mode} uname=root gname=operator tags=etc_pkg"; \
+			mode=0644; \
 		done; \
 	) | ${METALOG.add}
 .endif	# MKUNPRIVED != no
@@ -335,7 +308,11 @@ install-etc-files: .PHONY .MAKE check_DESTDIR MAKEDEV
 		${BINOWN} ${BINGRP}	${BINMODE}	${NETBSDSRCDIR}/etc/ ${DESTDIR}/etc/ resolv.conf \
 		${BINOWN} ${BINGRP}	${BINMODE}	${NETBSDSRCDIR}/etc/ ${DESTDIR}/etc/ motd \
 		${BINOWN} ${BINGRP}	${BINMODE}	${NETBSDSRCDIR}/etc/ ${DESTDIR}/etc/ rc.conf \
-		${BINOWN} ${BINGRP}	${BINMODE}	${NETBSDSRCDIR}/etc/ ${DESTDIR}/etc/ profile 
+		${BINOWN} ${BINGRP}	${BINMODE}	${NETBSDSRCDIR}/etc/ ${DESTDIR}/etc/ shrc \
+		${BINOWN} ${BINGRP}	${BINMODE}	${NETBSDSRCDIR}/etc/ ${DESTDIR}/etc/ csh.cshrc \
+		${BINOWN} ${BINGRP}	${BINMODE}	${NETBSDSRCDIR}/etc/ ${DESTDIR}/etc/ csh.login \
+		${BINOWN} ${BINGRP}	${BINMODE}	${NETBSDSRCDIR}/etc/ ${DESTDIR}/etc/ csh.logout \
+		${BINOWN} ${BINGRP}	${BINMODE}	${NETBSDSRCDIR}/etc/ ${DESTDIR}/etc/ profile
 	${_MKMSG_INSTALL} ${DESTDIR}${tdir}${files:T}
 	if [ ! -e ${tdir} ]; then \
 		${INSTALL_DIR} ${tdir}; \
@@ -377,6 +354,19 @@ install-etc-files-safe: .PHONY .MAKE check_DESTDIR MAKEDEV
 	${_MKMSG_INSTALL} ${DESTDIR}/dev/MAKEDEV
 	${ETC_INSTALL_OBJ_FILE} -o ${BINOWN} -g ${BINGRP} -m 555 \
 	    MAKEDEV ${DESTDIR}/dev
+.else
+.for owner group mode file in \
+		games games		664	/var/games/tetris.scores
+	${_MKMSG_INSTALL} ${DESTDIR}${file}
+	if [ ! -e ${DESTDIR}${file} -o -s ${DESTDIR}${file} ]; then \
+		${ETC_INSTALL_FILE} -o ${owner} -g ${group} -m ${mode} \
+    			/dev/null ${DESTDIR}${file}; \
+	else true; fi
+.endfor
+.endif # !defined(__MINIX)
+# TAC as software is imported, move the files from the .for block below
+# TAC to the .for block above.
+.if !defined(__MINIX)
 .for owner group mode file in \
 		${BINOWN} operator	664	/etc/dumpdates  \
 		${BINOWN} operator	600	/etc/skeykeys \
@@ -410,7 +400,6 @@ install-etc-files-safe: .PHONY .MAKE check_DESTDIR MAKEDEV
 		games games		664	/var/games/saillog \
 		games games		664	/var/games/snakerawscores \
 		games games		664	/var/games/snake.log \
-		games games		664	/var/games/tetris.scores
 	${_MKMSG_INSTALL} ${DESTDIR}${file}
 	if [ ! -e ${DESTDIR}${file} -o -s ${DESTDIR}${file} ]; then \
 		${ETC_INSTALL_FILE} -o ${owner} -g ${group} -m ${mode} \
@@ -434,6 +423,9 @@ install-etc-files-safe: .PHONY .MAKE check_DESTDIR MAKEDEV
 .if (${MKATF} != "no")
 	${MAKEDIRTARGET} ${NETBSDSRCDIR}/external/bsd/atf/etc/atf configinstall
 .endif
+.if (${MKKYUA} != "no")
+	${MAKEDIRTARGET} ${NETBSDSRCDIR}/external/bsd/kyua-cli/etc/kyua configinstall
+.endif
 .else # LSC Minix Specific
 .for owner group mode sdir tdir files in \
 		${BINOWN} ${BINGRP}	${BINMODE}	${NETBSDSRCDIR}/etc/usr/ ${DESTDIR}/usr/etc/ daily \
@@ -442,12 +434,10 @@ install-etc-files-safe: .PHONY .MAKE check_DESTDIR MAKEDEV
 		${BINOWN} ${BINGRP}	${BINMODE}	${NETBSDSRCDIR}/etc/ ${DESTDIR}/usr/lib/ crontab \
 		${BINOWN} ${BINGRP}	${BINMODE}	${NETBSDSRCDIR}/etc/ ${DESTDIR}/etc/ system.conf \
 		${BINOWN} ${BINGRP}	${NONBINMODE}	${NETBSDSRCDIR}/etc/usr/ ${DESTDIR}/usr/ Makefile \
+		${BINOWN} ${BINGRP}	${BINMODE}	${NETBSDSRCDIR}/etc/devmand/ ${DESTDIR}/etc/devmand/ usb_hub.cfg \
+		${BINOWN} ${BINGRP}	${BINMODE}	${NETBSDSRCDIR}/etc/devmand/ ${DESTDIR}/etc/devmand/ usb_storage.cfg \
 		${BINOWN} ${BINGRP}	${BINMODE}	${NETBSDSRCDIR}/etc/devmand/scripts/ ${DESTDIR}/etc/devmand/scripts/ block  \
 		${BINOWN} ${BINGRP}	${BINMODE}	${NETBSDSRCDIR}/etc/devmand/scripts/ ${DESTDIR}/etc/devmand/scripts/ singlechar \
-		${BINOWN} ${BINGRP}	${NONBINMODE}	${NETBSDSRCDIR}/etc/ast/ ${DESTDIR}/usr/ast/ .[aepv]* \
-		${BINOWN} ${BINGRP}	${NONBINMODE}	${NETBSDSRCDIR}/etc/ast/ ${DESTDIR}/root/ .[aepv]* \
-		ast	  users		${NONBINMODE}	${NETBSDSRCDIR}/etc/ast/ ${DESTDIR}/home/ast/ .[aepv]* \
-		bin	  ${BINGRP}	${NONBINMODE}	${NETBSDSRCDIR}/etc/ast/ ${DESTDIR}/home/bin/ .[aepv]* \
 
 	${_MKMSG_INSTALL} ${DESTDIR}${tdir}${files:T}
 	if [ ! -e ${tdir} ]; then \
@@ -455,7 +445,13 @@ install-etc-files-safe: .PHONY .MAKE check_DESTDIR MAKEDEV
 	fi; \
 	${INSTALL_FILE} -o ${owner} -g ${group} -m ${mode} ${sdir}${files} ${tdir};
 .endfor
-.for subdir in . defaults mtree
+.if ${MACHINE_ARCH} == "earm"
+	${_MKMSG_INSTALL} ${DESTDIR}/etc/rc.capes
+	${INSTALL_DIR} ${DESTDIR}/etc/rc.capes
+	${INSTALL_FILE} -m ${BINMODE} -o ${BINOWN} -g ${BINGRP} ${NETBSDSRCDIR}/etc/rc.capes/* ${DESTDIR}/etc/rc.capes
+	${INSTALL_FILE} -m ${BINMODE} -o ${BINOWN} -g ${BINGRP} ${NETBSDSRCDIR}/minix/drivers/usb/usbd/usbd.conf ${DESTDIR}/etc/system.conf.d/usbd
+.endif # Minix/earm specific
+.for subdir in . defaults mtree root skel
 	${MAKEDIRTARGET} ${subdir} configinstall
 .endfor
 	${_MKMSG_INSTALL} ${DESTDIR}/usr/lib/fonts
@@ -472,7 +468,10 @@ OBSOLETE.dir=		${.OBJDIR}/obsolete.dir
 OBSOLETE.files=		base comp etc games man misc text
 .else
 OBSOLETE.files=		minix
-.endif # defined(__MINIX)
+.endif # !defined(__MINIX)
+.if ${MKDEBUG} != "no"
+OBSOLETE.files+=	debug
+.endif
 .if ${MKKMOD} != "no"
 OBSOLETE.files+=	modules
 .endif
@@ -669,6 +668,7 @@ snap_post: .PHONY .MAKE build_kernelsets build_releasekernels
 # external sources (such as make(1)'s environment or command line)
 #
 ALL_KERNELS?=	${KERNEL_SETS} ${EXTRA_KERNELS} ${BUILD_KERNELS}
+.export ALL_KERNELS
 
 GETKERNELAWK=	${TOOL_AWK} '/^config/ {print $$2; found=1} \
 		END{ if (found == 0) print "netbsd"; }'
@@ -699,6 +699,8 @@ build_kernelsets: .PHONY
 #	${RELEASEDIR}/${RELEASEMACHINEDIR}/binary/sets
 #
 .for configfile in ${KERNEL_SETS}					# {
+.for configsel in ${ALL_KERNELS}
+.if ${configfile} == ${configsel}
 build_kernelsets: kernset-${configfile}
 kernset-${configfile}: .PHONY build_kernels snap_pre
 	@ kernlist=$$(${GETKERNELAWK} ${KERNCONFDIR}/${configfile}); \
@@ -726,6 +728,8 @@ kernset-${configfile}: .PHONY build_kernels snap_pre
 			done ) | eval $${pax_cmd}; \
 		} \
 	}
+.endif
+.endfor
 .endfor	# KERNEL_SETS							# }
 
 build_releasekernels: .PHONY
@@ -733,6 +737,8 @@ build_releasekernels: .PHONY
 #	${RELEASEDIR}/${RELEASEMACHINEDIR}/binary/kernel
 #
 .for configfile in ${KERNEL_SETS} ${EXTRA_KERNELS}			# {
+.for configsel in ${ALL_KERNELS}
+.if ${configfile} == ${configsel}
 build_releasekernels: releasekern-${configfile}
 releasekern-${configfile}: .PHONY build_kernels snap_pre
 	@ kernlist=$$(${GETKERNELAWK} ${KERNCONFDIR}/${configfile:C/.*\///}); \
@@ -751,6 +757,8 @@ releasekern-${configfile}: .PHONY build_kernels snap_pre
 			done; \
 		done; \
 	}
+.endif
+.endfor
 .endfor	# KERNEL_SETS EXTRA_KERNELS					# }
 
 # snap_md_post --
@@ -768,7 +776,7 @@ clean:
 SUBDIR=	defaults rc.d mtree
 .else
 SUBDIR=	devmand defaults mtree
-.endif  # defined(__MINIX)
+.endif # !defined(__MINIX)
 
 .include <bsd.prog.mk>
 .include <bsd.subdir.mk>

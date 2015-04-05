@@ -1,4 +1,4 @@
-/*	$NetBSD: unistd.h,v 1.135 2012/07/14 15:06:26 darrenr Exp $	*/
+/*	$NetBSD: unistd.h,v 1.139 2013/10/09 09:38:21 njoly Exp $	*/
 
 /*-
  * Copyright (c) 1998, 1999, 2008 The NetBSD Foundation, Inc.
@@ -88,7 +88,7 @@ __dead	 void _exit(int);
 int	 access(const char *, int);
 unsigned int alarm(unsigned int);
 int	 chdir(const char *);
-#if !defined(__minix) && (defined(_POSIX_C_SOURCE) || defined(_XOPEN_SOURCE))
+#if defined(_POSIX_C_SOURCE) || defined(_XOPEN_SOURCE)
 int	chown(const char *, uid_t, gid_t) __RENAME(__posix_chown);
 #else
 int	chown(const char *, uid_t, gid_t);
@@ -133,9 +133,7 @@ ssize_t	 read(int, void *, size_t);
 #endif
 int	 rmdir(const char *);
 int	 setgid(gid_t);
-#ifndef __minix
 int	 setpgid(pid_t, pid_t);
-#endif /* !__minix */
 pid_t	 setsid(void);
 int	 setuid(uid_t);
 unsigned int	 sleep(unsigned int);
@@ -194,9 +192,9 @@ int	 ftruncate(int, off_t);
  */
 #if (_POSIX_C_SOURCE - 0) >= 199309L || (_XOPEN_SOURCE - 0) >= 500 || \
     defined(_NETBSD_SOURCE)
-#ifndef __minix 
+#if !defined(__minix)
 int	 fdatasync(int);
-#endif /* !__minix */
+#endif /* !defined(__minix) */
 int	 fsync(int);
 #endif
 
@@ -247,7 +245,7 @@ typedef	__intptr_t	intptr_t;
 
 int	 brk(void *);
 int	 fchdir(int);
-#if !defined(__minix) && defined(_XOPEN_SOURCE)
+#if defined(_XOPEN_SOURCE)
 int	 fchown(int, uid_t, gid_t) __RENAME(__posix_fchown);
 #else
 int	 fchown(int, uid_t, gid_t);
@@ -257,25 +255,25 @@ long	 gethostid(void);
 int	 gethostname(char *, size_t);
 __pure int
 	 getpagesize(void);		/* legacy */
-#ifndef __minix
+#if !defined(__minix)
 pid_t	 getpgid(pid_t);
+#endif /* !defined(__minix) */
 #if defined(_XOPEN_SOURCE)
 int	 lchown(const char *, uid_t, gid_t) __RENAME(__posix_lchown);
 #else
 int	 lchown(const char *, uid_t, gid_t);
 #endif
-#endif /* !__minix */
 int	 lockf(int, int, off_t);
 #if __SSP_FORTIFY_LEVEL == 0
 ssize_t	 readlink(const char * __restrict, char * __restrict, size_t);
 #endif
 void	*sbrk(intptr_t);
-#ifndef __minix
 /* XXX prototype wrong! */
 int	 setpgrp(pid_t, pid_t);			/* obsoleted by setpgid() */
+#if !defined(__minix)
 int	 setregid(gid_t, gid_t);
 int	 setreuid(uid_t, uid_t);
-#endif /* !__minix */
+#endif /* !defined(__minix) */
 void	 swab(const void * __restrict, void * __restrict, ssize_t);
 int	 symlink(const char *, const char *);
 void	 sync(void);
@@ -302,48 +300,28 @@ ssize_t	 pwrite(int, const void *, size_t, off_t);
 /*
  * X/Open Extended API set 2 (a.k.a. C063)
  */
-#if defined(_INCOMPLETE_XOPEN_C063)
+#if (_POSIX_C_SOURCE - 0) >= 200809L || (_XOPEN_SOURCE - 0 >= 700) || \
+    defined(_INCOMPLETE_XOPEN_C063) || defined(_NETBSD_SOURCE)
 int	linkat(int, const char *, int, const char *, int);
 int	renameat(int, const char *, int, const char *);
-int	mkfifoat(int, const char *, mode_t);
-int	mknodat(int, const char *, mode_t, uint32_t);
-int	mkdirat(int, const char *, mode_t);
 int	faccessat(int, const char *, int, int);
-int	fchmodat(int, const char *, mode_t, int);
 int	fchownat(int, const char *, uid_t, gid_t, int);
-int	fexecve(int, char * const *, char * const *);
 int	readlinkat(int, const char *, char *, size_t);
 int	symlinkat(const char *, int, const char *);
 int	unlinkat(int, const char *, int);
+#endif
+#if defined(_INCOMPLETE_XOPEN_C063)
+int	fexecve(int, char * const *, char * const *);
 #endif
 
 
 /*
  * Implementation-defined extensions
  */
-#ifdef __minix
-int lseek64(int fd, u64_t _offset, int _whence, u64_t *_newpos);
 #if defined(_NETBSD_SOURCE)
-#include <minix/type.h>
-
-int getprocnr(void);
-int getnprocnr(pid_t pid);
-int getpprocnr(void);
-int _pm_findproc(char *proc_name, int *proc_nr);
-int mapdriver(char *label, int major, int style, int flags);
-pid_t getnpid(endpoint_t proc_ep);
-uid_t getnuid(endpoint_t proc_ep);
-gid_t getngid(endpoint_t proc_ep);
-int getnucred(endpoint_t proc_ep, struct ucred *ucred);
-ssize_t pread64(int fd, void *buf, size_t count, u64_t where);
-ssize_t pwrite64(int fd, const void *buf, size_t count, u64_t where);
-#endif /* defined(_NETBSD_SOURCE) */
-#endif /* __minix */
-
-#if defined(_NETBSD_SOURCE)
-#ifndef __minix
+#if !defined(__minix)
 int	 acct(const char *);
-#endif /* !__minix */
+#endif /* !defined(__minix) */
 int	 closefrom(int);
 int	 des_cipher(const char *, char *, long, int);
 int	 des_setkey(const char *);
@@ -378,19 +356,19 @@ int	 iruserok(uint32_t, int, const char *, const char *);
 int      issetugid(void);
 int	 nfssvc(int, void *);
 int	 pipe2(int *, int);
-#ifndef __minix
+#if !defined(__minix)
 int	 profil(char *, size_t, u_long, u_int);
-#endif /* !__minix */
+#endif /* !defined(__minix) */
 #ifndef __PSIGNAL_DECLARED
 #define __PSIGNAL_DECLARED
 /* also in signal.h */
 void	 psignal(int, const char *);
 #endif /* __PSIGNAL_DECLARED */
 int	 rcmd(char **, int, const char *, const char *, const char *, int *);
-#ifndef __minix
 int	 reboot(int, char *);
+#if !defined(__minix)
 int	 revoke(const char *);
-#endif
+#endif /* !defined(__minix) */
 int	 rresvport(int *);
 int	 ruserok(const char *, int, const char *, const char *);
 int	 setdomainname(const char *, size_t);
@@ -408,10 +386,10 @@ void	 strmode(mode_t, char *);
 /* backwards-compatibility; also in string.h */
 __aconst char *strsignal(int);
 #endif /* __STRSIGNAL_DECLARED */
-#ifndef __minix
+#if !defined(__minix)
 int	 swapctl(int, void *, int);
 int	 swapon(const char *);			/* obsoleted by swapctl() */
-#endif /* !__minix */
+#endif /* !defined(__minix) */
 int	 syscall(int, ...);
 quad_t	 __syscall(quad_t, ...);
 int	 undelete(const char *);
@@ -434,5 +412,4 @@ extern	 char *suboptarg;	/* getsubopt(3) external variable */
 #endif
 
 __END_DECLS
-
 #endif /* !_UNISTD_H_ */

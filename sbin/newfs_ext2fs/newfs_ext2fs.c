@@ -1,4 +1,4 @@
-/*	$NetBSD: newfs_ext2fs.c,v 1.8 2009/03/02 10:38:13 tsutsui Exp $	*/
+/*	$NetBSD: newfs_ext2fs.c,v 1.9 2013/10/19 01:09:59 christos Exp $	*/
 
 /*
  * Copyright (c) 1983, 1989, 1993, 1994
@@ -39,7 +39,7 @@ __COPYRIGHT("@(#) Copyright (c) 1983, 1989, 1993, 1994\
 #if 0
 static char sccsid[] = "@(#)newfs.c	8.13 (Berkeley) 5/1/95";
 #else
-__RCSID("$NetBSD: newfs_ext2fs.c,v 1.8 2009/03/02 10:38:13 tsutsui Exp $");
+__RCSID("$NetBSD: newfs_ext2fs.c,v 1.9 2013/10/19 01:09:59 christos Exp $");
 #endif
 #endif /* not lint */
 
@@ -68,7 +68,9 @@ __RCSID("$NetBSD: newfs_ext2fs.c,v 1.8 2009/03/02 10:38:13 tsutsui Exp $");
 #include <util.h>
 #include <mntopts.h>
 
+#if defined(__minix)
 #include <minix/partition.h>
+#endif /* !defined(__minix) */
 
 #include "extern.h"
 #include "partutil.h"
@@ -82,17 +84,17 @@ static void usage(void) __dead;
  * L_DFL_*.
  */
 #define SMALL_FSSIZE	((4 * 1024 * 1024) / sectorsize)	/* 4MB */
-#ifdef __minix
-#define S_DFL_BSIZE	4096
-#else
+#if !defined(__minix)
 #define S_DFL_BSIZE	1024
-#endif
-#define MEDIUM_FSSIZE	((512 * 1024 * 1024) / sectorsize)	/* 512MB */
-#ifdef __minix
-#define M_DFL_BSIZE	4096
 #else
+#define S_DFL_BSIZE	4096
+#endif /* !defined(__minix) */
+#define MEDIUM_FSSIZE	((512 * 1024 * 1024) / sectorsize)	/* 512MB */
+#if !defined(__minix)
 #define M_DFL_BSIZE	1024
-#endif
+#else
+#define M_DFL_BSIZE	4096
+#endif /* !defined(__minix) */
 #define L_DFL_BSIZE	4096
 
 /*
@@ -123,37 +125,40 @@ uint	density;		/* number of bytes per inode */
 uint	num_inodes;		/* number of inodes (overrides density) */
 char	*volname = NULL;	/* volume name */
 
-#ifndef __minix
+#if !defined(__minix)
 static char *disktype = NULL;
-#endif
+#endif /* !defined(__minix) */
 static char device[MAXPATHLEN];
 
+#if !defined(__minix)
 static const char lmsg[] = "%s: can't read disk label";
+#endif /* !defined(__minix) */
 
 int
 main(int argc, char *argv[])
 {
-#ifndef __minix
+#if !defined(__minix)
 	struct disk_geom geo;
 	struct dkwedge_info dkw;
-	struct statvfs *mp;
-	char *s2;
-	int len, n;
 #else
 	u64_t minix_fssize;
-#endif
+#endif /* !defined(__minix) */
+	struct statvfs *mp;
 	struct stat sb;
-	int ch, fsi, fso, Fflag, Iflag, Zflag;
-	char *cp, *s1, *special;
+	int ch, fsi, fso, len, n, Fflag, Iflag, Zflag;
+	char *s1, *s2, *special;
 	const char *opstring;
 	int byte_sized;
 	uint blocks;			/* number of blocks */
 
-	cp = NULL;
-	fso = -1;
+	fsi = fso = -1;
 	Fflag = Iflag = Zflag = 0;
 	verbosity = -1;
+#if !defined(__minix)
+	opstring = "D:FINO:S:V:Zb:f:i:l:m:n:s:v:";
+#else
 	opstring = "D:FINO:S:V:Zb:f:i:l:m:n:s:v:B:";
+#endif /* !defined(__minix) */
 	byte_sized = 0;
 	while ((ch = getopt(argc, argv, opstring)) != -1)
 		switch (ch) {
@@ -166,11 +171,11 @@ main(int argc, char *argv[])
 		case 'F':
 			Fflag = 1;
 			break;
-#ifndef __minix
+#if !defined(__minix)
 		case 'I':
 			Iflag = 1;
 			break;
-#endif
+#endif /* !defined(__minix) */
 		case 'N':
 			Nflag = 1;
 			if (verbosity == -1)
@@ -194,12 +199,13 @@ main(int argc, char *argv[])
 		case 'V':
 			verbosity = strsuftoi64("verbose", optarg, 0, 4, NULL);
 			break;
-#ifndef __minix
+#if !defined(__minix)
 		case 'Z':
 			Zflag = 1;
 			break;
-#endif
+#else
 		case 'B':
+#endif /* !defined(__minix) */
 		case 'b':
 			bsize = strsuftoi64("block size",
 			    optarg, MINBSIZE, EXT2_MAXBSIZE, NULL);
@@ -245,9 +251,9 @@ main(int argc, char *argv[])
 		usage();
 
 	memset(&sb, 0, sizeof(sb));
-#ifndef __minix
+#if !defined(__minix)
 	memset(&dkw, 0, sizeof(dkw));
-#endif
+#endif /* !defined(__minix) */
 	special = argv[0];
 	if (Fflag) {
 		int fl;
@@ -280,7 +286,6 @@ main(int argc, char *argv[])
 		if (fsi < 0 || fstat(fsi, &sb) == -1)
 			err(EXIT_FAILURE, "%s: open for read", special);
 
-#ifndef __minix
 		if (!Nflag) {
 			fso = open(special, O_WRONLY, 0);
 			if (fso < 0)
@@ -312,6 +317,7 @@ main(int argc, char *argv[])
 			}
 		}
 
+#if !defined(__minix)
 		if (getdiskinfo(special, fsi, disktype, &geo, &dkw) == -1)
 			errx(EXIT_FAILURE, lmsg, special);
 
@@ -335,12 +341,6 @@ main(int argc, char *argv[])
 			}
 		}
 #else
-	 {
-		fso = open(special, O_WRONLY, 0);
-		if (fso < 0)
-			err(EXIT_FAILURE,
-			    "%s: open for write", special);
-
 		if(minix_sizeup(special, &minix_fssize) < 0)
 			errx(EXIT_FAILURE, "minix_sizeup failed");
 
@@ -349,13 +349,12 @@ main(int argc, char *argv[])
 
 		if (sectorsize == 0)
 			sectorsize = 512;
-	 }
-#endif
+#endif /* !defined(__minix) */
 	}
 
 	if (byte_sized)
 		fssize /= sectorsize;
-#ifndef __minix
+#if !defined(__minix)
 	if (fssize <= 0) {
 		if (sb.st_size != 0)
 			fssize += sb.st_size / sectorsize;
@@ -371,22 +370,20 @@ main(int argc, char *argv[])
 		    "size %" PRIu64 " exceeds maximum file system size on "
 		    "`%s' of %" PRIu64 " sectors",
 		    fssize, special, dkw.dkw_size);
-#endif
-
-	printf("fssize = %lld %d-byte sectors\n", fssize, sectorsize);
+#endif /* !defined(__minix) */
 
 	/* XXXLUKEM: only ftruncate() regular files ? (dsl: or at all?) */
 	if (Fflag && fso != -1
 	    && ftruncate(fso, (off_t)fssize * sectorsize) == -1)
 		err(1, "can't ftruncate %s to %" PRId64, special, fssize);
 
-#ifndef __minix
+#if !defined(__minix)
 	if (Zflag && fso != -1) {	/* pre-zero (and de-sparce) the file */
 		char *buf;
 		int bufsize, i;
 		off_t bufrem;
-
 		struct statvfs sfs;
+
 		if (fstatvfs(fso, &sfs) == -1) {
 			warn("can't fstatvfs `%s'", special);
 			bufsize = 8192;
@@ -400,7 +397,7 @@ main(int argc, char *argv[])
 		if (verbosity > 0)
 			printf("Creating file system image in `%s', "
 			    "size %" PRId64 " bytes, in %d byte chunks.\n",
-			    special, (signed long long) bufrem, bufsize);
+			    special, bufrem, bufsize);
 		while (bufrem > 0) {
 			i = write(fso, buf, MIN(bufsize, bufrem));
 			if (i == -1)
@@ -409,7 +406,7 @@ main(int argc, char *argv[])
 		}
 		free(buf);
 	}
-#endif
+#endif /* !defined(__minix) */
 
 	/* Sort out fragment and block sizes */
 	if (bsize == 0) {
@@ -423,13 +420,10 @@ main(int argc, char *argv[])
 				bsize = L_DFL_BSIZE;
 		}
 	}
-
 	if (fsize == 0)
 		fsize = bsize;
 
 	blocks = fssize * sectorsize / bsize;
-
-	fssize = (u64_t) blocks * bsize / sectorsize;
 
 	if (num_inodes == 0) {
 		if (density != 0)

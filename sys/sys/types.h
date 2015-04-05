@@ -1,4 +1,4 @@
-/*	$NetBSD: types.h,v 1.89 2012/03/17 21:30:29 christos Exp $	*/
+/*	$NetBSD: types.h,v 1.90 2013/02/02 14:00:37 matt Exp $	*/
 
 /*-
  * Copyright (c) 1982, 1986, 1991, 1993, 1994
@@ -97,23 +97,22 @@ typedef	uint64_t	u_int64_t;
 
 #ifdef __minix
 typedef uint8_t 	u8_t;
+#define u8_t		uint8_t
 typedef uint16_t	u16_t;
+#define u16_t		uint16_t
 typedef uint32_t	u32_t;
+#define u32_t		uint32_t
 typedef uint64_t 	u64_t;
+#define u64_t		uint64_t
 
 typedef int8_t		i8_t;
+#define i8_t		int8_t
 typedef int16_t		i16_t;
+#define i16_t		int16_t
 typedef int32_t		i32_t;
+#define i32_t		int32_t
 typedef int64_t		i64_t;
-
-typedef uint64_t	big_ino_t;
-typedef int64_t		big_off_t;
-typedef u32_t		big_dev_t;
-typedef u32_t		big_gid_t;
-typedef u32_t		big_mode_t;
-typedef u32_t		big_nlink_t;
-typedef u32_t		big_uid_t;
-
+#define i64_t		int64_t
 
 #ifdef _NETBSD_SOURCE
 /* some Minix specific types that do not conflict with posix */
@@ -123,16 +122,6 @@ typedef uint32_t bit_t;       /* bit number in a bit map */
 typedef uint16_t zone1_t;     /* zone number for V1 file systems */
 typedef uint32_t bitchunk_t; /* collection of bits in a bitmap */
 #endif
-
-/* ANSI C makes writing down the promotion of unsigned types very messy.  When
- * sizeof(short) == sizeof(int), there is no promotion, so the type stays
- * unsigned.  When the compiler is not ANSI, there is usually no loss of
- * unsignedness, and there are usually no prototypes so the promoted type
- * doesn't matter.  The use of types like Ino_t is an attempt to use ints
- * (which are not promoted) while providing information to the reader.
- */
-
-typedef unsigned long  Ino_t;
 #endif /* __minix */
 
 #include <machine/endian.h>
@@ -167,7 +156,7 @@ typedef	int64_t		longlong_t;	/* for XDR */
 typedef	uint64_t	u_longlong_t;	/* for XDR */
 
 typedef	int64_t		blkcnt_t;	/* fs block count */
-typedef	uint32_t		blksize_t;	/* fs optimal block size */
+typedef	int32_t		blksize_t;	/* fs optimal block size */
 
 #ifndef	fsblkcnt_t
 typedef	__fsblkcnt_t	fsblkcnt_t;	/* fs block count (statvfs) */
@@ -194,7 +183,7 @@ typedef	__daddr_t	daddr_t;	/* disk address */
 typedef	int64_t		daddr_t;	/* disk address */
 #endif
 
-typedef	uint32_t	dev_t;		/* device number */
+typedef	uint64_t	dev_t;		/* device number */
 typedef	uint32_t	fixpt_t;	/* fixed point number */
 
 #ifndef	gid_t
@@ -204,7 +193,7 @@ typedef	__gid_t		gid_t;		/* group id */
 
 typedef	int		idtype_t;	/* type of the id */
 typedef	uint32_t	id_t;		/* group id, process id or user id */
-typedef	uint32_t	ino_t;		/* inode number */
+typedef	uint64_t	ino_t;		/* inode number */
 typedef	long		key_t;		/* IPC key (for Sys V IPC) */
 
 #ifndef	mode_t
@@ -212,7 +201,7 @@ typedef	__mode_t	mode_t;		/* permissions */
 #define	mode_t		__mode_t
 #endif
 
-typedef	int16_t	nlink_t;	/* link count */
+typedef	uint32_t	nlink_t;	/* link count */
 
 #ifndef	off_t
 typedef	__off_t		off_t;		/* file offset */
@@ -224,7 +213,7 @@ typedef	__pid_t		pid_t;		/* process id */
 #define	pid_t		__pid_t
 #endif
 typedef int32_t		lwpid_t;	/* LWP id */
-typedef uint32_t	rlim_t;		/* resource limit */
+typedef uint64_t	rlim_t;		/* resource limit */
 typedef	int32_t		segsz_t;	/* segment size */
 typedef	int32_t		swblk_t;	/* swap offset */
 
@@ -244,9 +233,11 @@ typedef	int		psetid_t;
  * Boolean type definitions for the kernel environment.  User-space
  * boolean definitions are found in <stdbool.h>.
  */
+#ifndef __cplusplus
 #define bool	_Bool
 #define true	1
 #define false	0
+#endif
 
 /*
  * Deprecated Mach-style boolean_t type.  Should not be used by new code.
@@ -300,12 +291,11 @@ typedef int32_t __devmajor_t, __devminor_t;
 #define devmajor_t __devmajor_t
 #define devminor_t __devminor_t
 #define NODEVMAJOR (-1)
-/* LSC Our major / minor numbering scheme is not the exactly the same, to be updated? */
-#define	major(x)	((devmajor_t)(((uint32_t)(x) & 0x0000ff00) >>  8))
-#define	minor(x)	((devminor_t)( \
+#define	major(x)	((devmajor_t)(((uint32_t)(x) & 0x000fff00) >>  8))
+#define	minor(x)	((devminor_t)((((uint32_t)(x) & 0xfff00000) >> 12) | \
 				   (((uint32_t)(x) & 0x000000ff) >>  0)))
-#define	makedev(x,y)	((dev_t)((((x) <<  8) & 0x0000ff00) | \
-				  \
+#define	makedev(x,y)	((dev_t)((((x) <<  8) & 0x000fff00) | \
+				 (((y) << 12) & 0xfff00000) | \
 				 (((y) <<  0) & 0x000000ff)))
 #endif
 
@@ -335,11 +325,9 @@ typedef	_BSD_CLOCKID_T_		clockid_t;
 #undef	_BSD_CLOCKID_T_
 #endif
 
-#ifndef __minix
 #ifdef	_BSD_TIMER_T_
 typedef	_BSD_TIMER_T_		timer_t;
 #undef	_BSD_TIMER_T_
-#endif
 #endif
 
 #ifdef	_BSD_SUSECONDS_T_

@@ -1,52 +1,48 @@
-#	$NetBSD: Makefile,v 1.210 2012/08/08 14:13:46 christos Exp $
+#	$NetBSD: Makefile,v 1.214 2013/11/22 16:10:25 christos Exp $
 #	from: @(#)Makefile	8.3 (Berkeley) 1/7/94
 
 .include <bsd.own.mk>
 
-SUBDIR= \
-	banner \
-	bzip2 bzip2recover \
-	cal chpass cksum \
-	col ctags \
-	du \
+SUBDIR= asa \
+	banner basename \
+	bzip2 bzip2recover cal calendar \
+	checknr chpass cksum col colcrt colrm \
+	column comm csplit ctags cut \
+	deroff dirname du \
+	env expand \
+	false finger fold fpr from \
+	fsplit ftp genassym getopt \
+	head hexdump id indent infocmp join jot \
+	lam last ldd leave \
+	lock login logname lorder m4 \
+	machine make man menuc mesg \
+	mkdep mkfifo mkstr mktemp \
+	msgc \
+	nbperf newgrp nice nl nohup \
+	passwd paste patch pathchk pr \
+	printenv printf pwhash \
+	renice rev \
 	\
-	from ftp \
-	genassym getopt head \
-	indent infocmp join \
-	ldd \
-	login lorder m4 \
-	make man \
-	mkdep mktemp \
-	\
-	nbperf newgrp nvi \
-	passwd \
-	printf \
-	\
-	\
-	sed seq \
-	sort stat su \
-	tic tput \
-	tsort \
-	toproto \
-	uniq \
-	\
-	\
-	whatis who \
-	xinstall yes
+	sdiff sed seq shar shlock \
+	shuffle  sort split stat su \
+	tail tee tic touch tput \
+	tr true tsort tty ul uname unexpand unifdef \
+	uniq units unvis unzip users \
+	uudecode uuencode uuidgen vis \
+	w \
+	wall wc what whereis who whois \
+	write xargs xinstall xstr yes
 
 .if !defined(__MINIX)
 SUBDIR+= ../external/zlib/pigz/bin/pigz
 .else
-# Non-NetBSD imports
-SUBDIR+= ministat
+# LSC FIXME For now we compile those unconditionnaly
+SUBDIR+= apropos whatis bdes soelim 
+.endif # defined(__MINIX)
 
-# Minix commands
-SUBDIR+= top 
-
-# LSC FIXME For now we compile unconditionnaly apropos even if we 
-# do not have whatis
-SUBDIR+= apropos
-.endif # defie
+.if (${MKGROFF} == "no")
+SUBDIR+= soelim
+.endif
 
 .if (${MKMAKEMANDB} == "no")
 SUBDIR+= apropos whatis

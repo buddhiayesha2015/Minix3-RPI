@@ -1,4 +1,4 @@
-/*	$NetBSD: crt0.S,v 1.1 2012/08/13 02:49:04 matt Exp $	*/
+/*	$NetBSD: crt0.S,v 1.3 2013/09/05 00:27:38 matt Exp $	*/
 
 /*-
  * Copyright (c) 2012 The NetBSD Foundation, Inc.
@@ -31,37 +31,28 @@
 
 #include <arm/asm.h>
 
-RCSID("$NetBSD: crt0.S,v 1.1 2012/08/13 02:49:04 matt Exp $")
+RCSID("$NetBSD: crt0.S,v 1.3 2013/09/05 00:27:38 matt Exp $")
 
 STRONG_ALIAS(_start,__start)
 
 _ENTRY(__start)
-#ifdef __minix
-        mov     r5, r2          /* cleanup */
-        mov     r4, r1          /* obj_main */
-        mov     r3, r0          /* ps_strings */
-        /* Get argc, argv, and envp from stack */
-        ldr     r0, [sp, #0x0000]
-        add     r1, sp, #0x0004
-        add     r2, r1, r0, lsl #2
-        add     r2, r2, #0x0004
-#else
 	/*
 	 * We need to swap ps_strings and cleanup
  	 */
 	mov	ip, r0		/* ps_strings -> tmp */
 	mov	r0, r2		/* cleanup -> ps_strings */
 	mov	r2, ip		/* tmp -> ps_strings */
-#endif /* __minix */
-	/* Ensure the stack is properly aligned before calling C code. */
-	bic	sp, sp, #7
 
-#ifdef __minix
-	/* Store argc and argv on the stack */
-        sub     sp, sp, #8
-        str     r5, [sp, #4]
-        str     r4, [sp, #0]
+	/* Ensure the stack is properly aligned before calling C code. */
+#if !defined(__thumb__)
+	bic	sp, sp, #7
+#else
+	movs	r6, #7
+	mov	r7, sp
+	bics	r7, r7, r6
+	mov	sp, r7
 #endif
+
 	/*
 	 * void ___start(void (*cleanup)(void),
 	 *    const Obj_Entry *obj,

@@ -1,12 +1,17 @@
-#	$NetBSD: Makefile,v 1.3 2011/06/29 02:01:37 mrg Exp $
+#	$NetBSD: Makefile,v 1.5 2013/08/22 00:17:48 matt Exp $
 
 LIBISPRIVATE=	yes
+
+.if defined(__MINIX)
+NOGCCERROR=yes
+NOCLANGERROR=yes
+.endif
 
 LIB=		cpp
 
 SRCS=		${G_libcpp_a_OBJS:.o=.c}
 
-CPPFLAGS+=	-I${.CURDIR} -I${.CURDIR}/arch/${MACHINE_ARCH} \
+CPPFLAGS+=	-I${.CURDIR} -I${.CURDIR}/arch/${GCC_MACHINE_ARCH} \
 		-I${GCCARCH} -I${BACKENDOBJ} -I. \
 		${G_INCLUDES:M-I*:N-I.*} \
 		-DPREFIX=\"/usr\"
@@ -21,5 +26,6 @@ ${OBJS}: ${G_LIBCPP_DEPS}
 
 localedir.h:
 	echo '#define LOCALEDIR "/usr/share/locale"' > ${.TARGET}
+CLEANFILES+= localedir.h
 
 init.d init.o: localedir.h

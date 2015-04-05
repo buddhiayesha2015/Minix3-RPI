@@ -1,23 +1,37 @@
-#	$NetBSD: Makefile,v 1.5 2011/08/09 13:00:04 joerg Exp $
+#	$NetBSD: Makefile,v 1.7 2013/11/01 18:11:49 christos Exp $
 
 REQUIRETOOLS=	yes
 NOLINT=		# defined
 
 .include <bsd.own.mk>
 
+.include "Makefile.inc"
+
 LIB=		stdc++
 LDADD=		-lgcc_s
 
 LIBDPLIBS+=	m ${.CURDIR}/../../../../../lib/libm
 
+.if defined(__MINIX)
+NOGCCERROR=yes
+NOCLANGERROR=yes
+.endif
+
 UNSUPPORTED_COMPILER.clang=	# defined
 CWARNFLAGS.clang+=	-Wno-logical-op-parentheses \
 			-Wno-deprecated-writable-strings -Wno-parentheses
 
-.if exists(${.CURDIR}/arch/${MACHINE_ARCH}/defs.mk) && ${MKGCC} != "no"
-.include "${.CURDIR}/arch/${MACHINE_ARCH}/defs.mk"
+.if exists(${.CURDIR}/arch/${GCC_MACHINE_ARCH}/defs.mk) && ${MKGCC} != "no"
+.include "${.CURDIR}/arch/${GCC_MACHINE_ARCH}/defs.mk"
 
+.if defined(__MINIX)
+# by itself, libstdc++ think it is version 6, so use the same number here
+# as this is the exact same code, and will allow us to provide this library
+# from the base system (here), or through the gcc45 package.
+SHLIB_MAJOR=	6
+.else
 SHLIB_MAJOR=	7
+.endif # defined(__MINIX)
 SHLIB_MINOR=	1
 
 SUBDIR=		include
@@ -30,7 +44,8 @@ SRCS=		${LIBSUPCXXSRCS} ${LIBSTDCXXSRCS}
 #CXXFLAGS+=	-ffunction-sections -fdata-sections 
 CXXFLAGS+=	-fno-implicit-templates -fdiagnostics-show-location=once
 CPPFLAGS+=	-I${DIST}/libstdc++-v3/include
-CPPFLAGS+=	-I${.CURDIR}/arch/${MACHINE_ARCH}
+CPPFLAGS+=	-I${.CURDIR}/arch/${GCC_MACHINE_ARCH}
+CPPFLAGS+=	-I${.CURDIR}/../libgomp/arch/${GCC_MACHINE_ARCH}
 
 CONF=		${DIST}/libstdc++-v3/config
 
@@ -150,9 +165,9 @@ CLEANFILES+= unwind.h
 	${DIST}/libstdc++-v3/libsupc++ \
 	${DIST}/libiberty \
 	${CONF}/locale/generic \
-	${.CURDIR}/arch/${MACHINE_ARCH}
+	${.CURDIR}/arch/${GCC_MACHINE_ARCH}
 
-${OBJS}: ${.CURDIR}/arch/${MACHINE_ARCH}/defs.mk
+${OBJS}: ${.CURDIR}/arch/${GCC_MACHINE_ARCH}/defs.mk
 .else
 .include <bsd.prog.mk> # do nothing
 .endif

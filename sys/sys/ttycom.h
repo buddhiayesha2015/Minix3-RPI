@@ -1,4 +1,4 @@
-/*	$NetBSD: ttycom.h,v 1.19 2011/09/24 00:05:39 christos Exp $	*/
+/*	$NetBSD: ttycom.h,v 1.20 2012/10/19 16:49:21 apb Exp $	*/
 
 /*-
  * Copyright (c) 1982, 1986, 1990, 1993, 1994
@@ -35,15 +35,11 @@
  *
  *	@(#)ttycom.h	8.1 (Berkeley) 3/28/94
  */
-#include <minix/termios.h>
-
-/* LSC FIXME: Wouldn't it be simpler to use that instead of including here 
-   termios? for now disabled, pending investigation. */
-#define _SYS_TTYCOM_H_
 
 #ifndef	_SYS_TTYCOM_H_
 #define	_SYS_TTYCOM_H_
 
+#include <sys/syslimits.h>
 #include <sys/ioccom.h>
 
 /*
@@ -62,12 +58,12 @@ struct winsize {
 	unsigned short	ws_ypixel;	/* vertical size, pixels */
 };
 
-/* ptmget, for /dev/ptm pty getting ioctl PTMGET */
+/* ptmget, for /dev/ptm pty getting ioctl TIOCPTMGET, and for TIOCPTSNAME */
 struct ptmget {
 	int	cfd;
 	int	sfd;
-	char	cn[16];
-	char	sn[16];
+	char	cn[PATH_MAX];
+	char	sn[PATH_MAX];
 };
 
 #define _PATH_PTMDEV	"/dev/ptm"
@@ -167,5 +163,17 @@ typedef char linedn_t[TTLINEDNAMELEN];
 #define	PPPDISC		5		/* ppp discipline */
 #define	STRIPDISC	6		/* metricom wireless IP discipline */
 #define	HDLCDISC	9		/* HDLC discipline */
+
+#if defined(__minix)
+
+/* Terminal ioctls. Use big T. */
+#define TIOCSFON        _IOW_BIG(1, u8_t [8192])	/* new font */
+
+/* Keyboard ioctls. */
+#define KIOCBELL        _IOW('k', 1, struct kio_bell)
+#define KIOCSLEDS       _IOW('k', 2, struct kio_leds)
+#define KIOCSMAP        _IOW('k', 3, keymap_t)
+
+#endif /* defined(__minix) */
 
 #endif /* !_SYS_TTYCOM_H_ */

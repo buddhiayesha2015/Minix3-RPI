@@ -1,4 +1,4 @@
-/* $NetBSD: crt0-common.c,v 1.9 2012/08/13 02:15:35 matt Exp $ */
+/* $NetBSD: crt0-common.c,v 1.13 2013/01/31 22:24:25 matt Exp $ */
 
 /*
  * Copyright (c) 1998 Christos Zoulas
@@ -36,13 +36,15 @@
  */
 
 #include <sys/cdefs.h>
-__RCSID("$NetBSD: crt0-common.c,v 1.9 2012/08/13 02:15:35 matt Exp $");
+__RCSID("$NetBSD: crt0-common.c,v 1.13 2013/01/31 22:24:25 matt Exp $");
 
 #include <sys/types.h>
 #include <sys/exec.h>
-#ifndef __minix
+#if !defined(__minix)
 #include <sys/syscall.h>
-#endif
+#else
+#include <string.h>
+#endif /* !defined(__minix) */
 #include <machine/profile.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -78,17 +80,14 @@ struct ps_strings *__ps_strings = 0;
 static char	 empty_string[] = "";
 char		*__progname = empty_string;
 
-#ifndef __minix
 __dead __dso_hidden void ___start(void (*)(void), const Obj_Entry *,
 			 struct ps_strings *);
 
+#if !defined(__minix)
 #define	write(fd, s, n)	__syscall(SYS_write, (fd), (s), (n))
 #else
-__dead __dso_hidden void ___start(int, char **, char **, void (*)(void),
-			const Obj_Entry *, struct ps_strings *);
-
 #define	write(fd, s, n) /* NO write() from here on minix */
-#endif
+#endif /* !defined(__minix) */
 
 #define	_FATAL(str)				\
 do {						\
@@ -104,10 +103,26 @@ do {						\
  * Since we don't need .init or .fini sections, just code them in C
  * to make life easier.
  */
-static const fptr_t init_array_start[] __weak_reference(__init_array_start);
-static const fptr_t init_array_end[] __weak_reference(__init_array_end);
-static const fptr_t fini_array_start[] __weak_reference(__fini_array_start);
-static const fptr_t fini_array_end[] __weak_reference(__fini_array_end);
+__weakref_visible const fptr_t preinit_array_start[1]
+    __weak_reference(__preinit_array_start);
+__weakref_visible const fptr_t preinit_array_end[1]
+    __weak_reference(__preinit_array_end);
+__weakref_visible const fptr_t init_array_start[1]
+    __weak_reference(__init_array_start);
+__weakref_visible const fptr_t init_array_end[1]
+    __weak_reference(__init_array_end);
+__weakref_visible const fptr_t fini_array_start[1]
+    __weak_reference(__fini_array_start);
+__weakref_visible const fptr_t fini_array_end[1]
+    __weak_reference(__fini_array_end);
+
+static inline void
+_preinit(void)
+{
+	for (const fptr_t *f = preinit_array_start; f < preinit_array_end; f++) {
+		(*f)();
+	}
+}
 
 static inline void
 _init(void)
@@ -127,28 +142,11 @@ _fini(void)
 #endif /* HAVE_INITFINI_ARRAY */
 
 void
-#ifdef __minix
-___start(int argc, char **argv, char **envp,
-    void (*cleanup)(void),                 /* from shared loader */
-#else
 ___start(void (*cleanup)(void),			/* from shared loader */
-#endif /* __minix */
     const Obj_Entry *obj,			/* from shared loader */
     struct ps_strings *ps_strings)
 {
-#ifdef __minix
-	/* LSC: We have not yet updated the way we pass arguments to 
-	        the userspace, so here some code to adapt this to the new 
-	        ways. */
-	struct ps_strings minix_ps_strings;
 
-	if (ps_strings == NULL) {
-		minix_ps_strings.ps_envstr = envp;
-		minix_ps_strings.ps_argvstr = argv;
-		minix_ps_strings.ps_nargvstr = argc;
-		ps_strings = &minix_ps_strings;
-	}
-#endif /* __minix */
 	if (ps_strings == NULL)
 		_FATAL("ps_strings missing\n");
 	__ps_strings = ps_strings;
@@ -177,6 +175,10 @@ ___start(void (*cleanup)(void),			/* from shared loader */
 	}
 
 	_libc_init();
+
+#ifdef HAVE_INITFINI_ARRAY
+	_preinit();
+#endif
 
 #ifdef MCRT0
 	atexit(_mcleanup);

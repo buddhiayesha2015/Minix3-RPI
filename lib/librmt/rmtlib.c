@@ -453,7 +453,7 @@ _rmt_write(int fildes, const void *buf, size_t nbyte)
 		return -1;
 
 	pstat = signal(SIGPIPE, SIG_IGN);
-	if ((size_t)write(WRITE(fildes), buf, nbyte) == nbyte) {
+	if ((size_t)write(WRITE(fildes), buf, nbyte) == (size_t) nbyte) {
 		signal(SIGPIPE, pstat);
 		return status(fildes);
 	}
@@ -626,13 +626,12 @@ remdev(const char *path)
 int
 rmtopen(const char *path, int oflag, ...)
 {
-	/* LSC: MINIX  This works only for int mode flags, so use the expected type. */	
-	uint32_t mode;
+	mode_t mode;
 	int fd;
 	va_list ap;
 	va_start(ap, oflag);
 
-	mode = va_arg(ap, uint32_t);
+	mode = va_arg(ap, mode_t);
 	va_end(ap);
 
 	_DIAGASSERT(path != NULL);

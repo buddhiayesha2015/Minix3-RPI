@@ -10,6 +10,7 @@ PROPLIBDIR=${NETBSDSRCDIR}/common/lib/libprop
 .include "${PROPLIBDIR}/Makefile.inc"
 
 CPPFLAGS+=-D_LIBPROP
+# LSC, for MINIX, _REENTRANT unsupported
 CPPFLAGS+= -I${NETBSDSRCDIR}/lib/libc/include # -D_REENTRANT
 
 LINTFLAGS+=-w

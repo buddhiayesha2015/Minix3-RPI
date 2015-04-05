@@ -1,4 +1,4 @@
-/*	$NetBSD: prop_object.c,v 1.28 2012/07/27 09:10:59 pooka Exp $	*/
+/*	$NetBSD: prop_object.c,v 1.29 2013/10/18 18:26:20 martin Exp $	*/
 
 /*-
  * Copyright (c) 2006, 2007 The NetBSD Foundation, Inc.
@@ -942,13 +942,9 @@ _prop_object_internalize_map_file(const char *fname)
 	if ((sb.st_size & pgmask) == 0)
 		need_guard = true;
 
-#ifndef __minix
 	mf->poimf_xml = mmap(NULL, need_guard ? mf->poimf_mapsize + pgsize
 			    		      : mf->poimf_mapsize,
 			    PROT_READ, MAP_FILE|MAP_SHARED, fd, (off_t)0);
-#else
-	mf->poimf_xml = MAP_FAILED;
-#endif
 	(void) close(fd);
 	if (mf->poimf_xml == MAP_FAILED) {
 		_PROP_FREE(mf, M_TEMP);
@@ -979,6 +975,9 @@ _prop_object_internalize_map_file(const char *fname)
  *	Unmap a file previously mapped for internalizing.
  */
 void
+#if defined(__minix)
+__dead
+#endif /* defined(__minix) */
 _prop_object_internalize_unmap_file(
     struct _prop_object_internalize_mapped_file *mf)
 {
@@ -988,7 +987,7 @@ _prop_object_internalize_unmap_file(
 	(void) munmap(mf->poimf_xml, mf->poimf_mapsize);
 	_PROP_FREE(mf, M_TEMP);
 #else
-	assert(0);
+	abort();
 #endif
 }
 #endif /* !_KERNEL && !_STANDALONE */
@@ -1001,7 +1000,7 @@ void
 prop_object_retain(prop_object_t obj)
 {
 	struct _prop_object *po = obj;
-	uint32_t ncnt;
+	uint32_t ncnt __unused;
 
 	_PROP_ATOMIC_INC32_NV(&po->po_refcnt, ncnt);
 	_PROP_ASSERT(ncnt != 0);

@@ -1,4 +1,4 @@
-/*	$NetBSD: time.h,v 1.41 2012/10/02 01:42:06 christos Exp $	*/
+/*	$NetBSD: time.h,v 1.43 2013/04/21 17:54:56 joerg Exp $	*/
 
 /*
  * Copyright (c) 1989, 1993
@@ -65,18 +65,12 @@ typedef	_BSD_CLOCKID_T_	clockid_t;
 #undef	_BSD_CLOCKID_T_
 #endif
 
-#ifndef __minix
 #ifdef	_BSD_TIMER_T_
 typedef	_BSD_TIMER_T_	timer_t;
 #undef	_BSD_TIMER_T_
 #endif
-#endif /* !__minix */
 
-#ifdef __minix
-#define CLOCKS_PER_SEC	60
-#else
 #define CLOCKS_PER_SEC	100
-#endif
 
 struct tm {
 	int	tm_sec;		/* seconds after the minute [0-61] */
@@ -99,11 +93,7 @@ clock_t clock(void);
 char *ctime(const time_t *) __RENAME(__ctime50);
 double difftime(time_t, time_t) __RENAME(__difftime50);
 struct tm *gmtime(const time_t *) __RENAME(__gmtime50);
-#ifndef __MINIX
 struct tm *localtime(const time_t *) __RENAME(__locatime50);
-#else
-struct tm *localtime(const time_t *) __RENAME(__localtime50);
-#endif
 time_t time(time_t *) __RENAME(__time50);
 time_t mktime(struct tm *) __RENAME(__mktime50);
 #endif
@@ -120,11 +110,7 @@ size_t strftime(char * __restrict, size_t, const char * __restrict,
  * need to include unistd.h
  */
 long __sysconf(int);
-#ifdef __minix
-#define CLK_TCK		(__sysconf(3))
-#else
 #define CLK_TCK		(__sysconf(39))
-#endif /* !__minix */
 #endif
 #endif
 
@@ -166,18 +152,14 @@ int clock_settime(clockid_t, const struct timespec *)
     __RENAME(__clock_settime50);
 int nanosleep(const struct timespec *, struct timespec *)
     __RENAME(__nanosleep50);
-#ifndef __minix
 int timer_gettime(timer_t, struct itimerspec *) __RENAME(__timer_gettime50);
 int timer_settime(timer_t, int, const struct itimerspec * __restrict, 
     struct itimerspec * __restrict) __RENAME(__timer_settime50);
-#endif /* !__minix */ 
 #endif
-#ifndef __minix
 int timer_create(clockid_t, struct sigevent * __restrict,
     timer_t * __restrict);
 int timer_delete(timer_t);
 int timer_getoverrun(timer_t);
-#endif /* __minix */
 #endif /* _POSIX_C_SOURCE >= 199309 || _XOPEN_SOURCE >= 500 || ... */
 
 #if (_POSIX_C_SOURCE - 0) >= 199506L || (_XOPEN_SOURCE - 0) >= 500 || \
@@ -190,6 +172,16 @@ struct tm *gmtime_r(const time_t * __restrict, struct tm * __restrict)
 struct tm *localtime_r(const time_t * __restrict, struct tm * __restrict)
     __RENAME(__localtime_r50);
 #endif
+#endif
+
+#if (_POSIX_C_SOURCE - 0) >= 200809L || defined(_NETBSD_SOURCE)
+#  ifndef __LOCALE_T_DECLARED
+typedef struct _locale		*locale_t;
+#  define __LOCALE_T_DECLARED
+#  endif
+size_t strftime_l(char * __restrict, size_t, const char * __restrict,
+    const struct tm * __restrict, locale_t)
+    __attribute__((__format__(__strftime__, 3, 0)));
 #endif
 
 #if defined(_NETBSD_SOURCE)
@@ -218,15 +210,16 @@ void tzfree(const timezone_t) __RENAME(__tzfree50);
 const char *tzgetname(const timezone_t, int) __RENAME(__tzgetname50);
 #endif
 
+size_t strftime_lz(const timezone_t, char * __restrict, size_t,
+    const char * __restrict, const struct tm * __restrict, locale_t)
+    __attribute__((__format__(__strftime__, 4, 0)));
 size_t strftime_z(const timezone_t, char * __restrict, size_t,
     const char * __restrict, const struct tm * __restrict)
     __attribute__((__format__(__strftime__, 4, 0)));
+char *strptime_l(const char * __restrict, const char * __restrict,
+    struct tm * __restrict, locale_t);
 
 #endif /* _NETBSD_SOURCE */
-
-#ifdef __minix
-int stime(time_t *_top);
-#endif /* __minix */
 
 __END_DECLS
 

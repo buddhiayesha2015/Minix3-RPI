@@ -1,4 +1,4 @@
-/*	$NetBSD: callcontext.c,v 1.23 2008/08/11 16:23:37 pooka Exp $	*/
+/*	$NetBSD: callcontext.c,v 1.27 2011/12/06 21:15:39 skrll Exp $	*/
 
 /*
  * Copyright (c) 2006, 2007, 2008 Antti Kantee.  All Rights Reserved.
@@ -30,7 +30,7 @@
 
 #include <sys/cdefs.h>
 #if !defined(lint)
-__RCSID("$NetBSD: callcontext.c,v 1.23 2008/08/11 16:23:37 pooka Exp $");
+__RCSID("$NetBSD: callcontext.c,v 1.27 2011/12/06 21:15:39 skrll Exp $");
 #endif /* !lint */
 
 #include <sys/types.h>
@@ -38,13 +38,13 @@ __RCSID("$NetBSD: callcontext.c,v 1.23 2008/08/11 16:23:37 pooka Exp $");
 
 #include <assert.h>
 #include <errno.h>
+#include <puffs.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ucontext.h>
 #include <unistd.h>
 
-#include "puffs.h"
 #include "puffs_priv.h"
 
 #if 0
@@ -78,6 +78,14 @@ puffs_cc_yield(struct puffs_cc *pcc)
 
 	assert(puffs_fakecc == 0);
 
+	if ((~pcc->pcc_flags & (PCC_BORROWED|PCC_DONE)) == 0) {
+		pcc->pcc_flags &= ~(PCC_BORROWED|PCC_DONE);
+		/*
+		 * see the XXX comment in puffs__cc_cont
+		 */
+		puffs__cc_destroy(pcc, 1);
+		setcontext(&pcc->pcc_uc_ret);
+	}
 	pcc->pcc_flags &= ~PCC_BORROWED;
 
 	/* romanes eunt domus */
@@ -110,7 +118,7 @@ puffs__cc_cont(struct puffs_cc *pcc)
 	DPRINTF(("puffs__cc_cont: pcc %p, mycc %p\n", pcc, mycc));
 
 	/*
-	 * XXX: race between setcontenxt() and recycle if
+	 * XXX: race between setcontext() and recycle if
 	 * we go multithreaded
 	 */
 	puffs__cc_destroy(mycc, 1);
@@ -184,7 +192,7 @@ slowccalloc(struct puffs_usermount *pu)
 	if (puffs_fakecc)
 		return &fakecc;
 
-	sp = minix_mmap(NULL, stacksize, PROT_READ|PROT_WRITE,
+	sp = mmap(NULL, stacksize, PROT_READ|PROT_WRITE,
 	    MAP_ANON|MAP_PRIVATE, -1, 0);
 	if (sp == MAP_FAILED)
 		return NULL;
@@ -194,11 +202,11 @@ slowccalloc(struct puffs_usermount *pu)
 
 	/* initialize both ucontext's */
 	if (getcontext(&pcc->pcc_uc) == -1) {
-		minix_munmap(pcc, stacksize);
+		munmap(pcc, stacksize);
 		return NULL;
 	}
 	if (getcontext(&pcc->pcc_uc_ret) == -1) {
-		minix_munmap(pcc, stacksize);
+		munmap(pcc, stacksize);
 		return NULL;
 	}
 
@@ -280,7 +288,7 @@ cc_free(struct puffs_cc *pcc)
 
 	DPRINTF(("invalidating pcc %p\n", pcc));
 	assert(!puffs_fakecc);
-	minix_munmap(pcc, stacksize);
+	munmap(pcc, stacksize);
 }
 
 void
@@ -288,6 +296,7 @@ puffs__cc_destroy(struct puffs_cc *pcc, int nonuke)
 {
 	struct puffs_usermount *pu = pcc->pcc_pu;
 
+	pcc->pcc_flags &= ~PCC_HASCALLER;
 	assert(pcc->pcc_flags == 0);
 	assert(!puffs_fakecc);
 

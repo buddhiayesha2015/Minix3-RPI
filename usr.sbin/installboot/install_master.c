@@ -33,7 +33,7 @@ static void report(const char *label)
 	fprintf(stderr, "installboot: %s: %s\n", label, strerror(errno));
 }
 
-static void fatal(const char *label)
+static __dead void fatal(const char *label)
 {
 	report(label);
 	exit(1);
@@ -84,7 +84,7 @@ void install_master(const char *device, char *masterboot, char **guide)
 {
 	FILE *masf;
 	unsigned long size;
-	static char buf[_MAX_BLOCK_SIZE];
+	static char buf[BOOT_BLOCK_SIZE];
 
 	/* Open device. */
 	if ((rawfd= open(rawdev= device, O_RDWR)) < 0) fatal(device);

@@ -124,21 +124,17 @@ main(int argc, char *argv[])
 	struct filelist filelist;
 	int num_input_files;
 	FILE *outfp = NULL;
-#if !defined(__minix)
 	struct rlimit rl;
-#endif /* !defined(__minix) */
 	struct stat st;
 
 	setlocale(LC_ALL, "");
 
-#if !defined(__minix)
 	/* bump RLIMIT_NOFILE to maximum our hard limit allows */
 	if (getrlimit(RLIMIT_NOFILE, &rl) < 0)
 		err(2, "getrlimit");
 	rl.rlim_cur = rl.rlim_max;
 	if (setrlimit(RLIMIT_NOFILE, &rl) < 0)
 		err(2, "setrlimit");
-#endif /* !defined(__minix) */
 	
 	d_mask[REC_D = '\n'] = REC_D_F;
 	d_mask['\t'] = d_mask[' '] = BLANK | FLD_D;
@@ -170,9 +166,9 @@ main(int argc, char *argv[])
 			    debug_flags |= 1 << (optarg[i] & 31);
 			break;
 		case 'd': case 'f': case 'i': case 'n': case 'l':
-#ifdef __minix
+#if defined(__minix)
 		case 'x':
-#endif
+#endif /* defined(__minix) */
 			fldtab[0].flags |= optval(ch, 0);
 			break;
 		case 'H':

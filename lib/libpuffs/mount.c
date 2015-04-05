@@ -5,44 +5,44 @@
 #include "fs.h"
 #include <fcntl.h>
 #include <string.h>
-#include <minix/com.h>
-#include <sys/stat.h>
-#include <minix/ds.h>
 #include <minix/vfsif.h>
 
 #include "puffs_priv.h"
 
 /*===========================================================================*
- *				fs_readsuper				     *
+ *				fs_mount				     *
  *===========================================================================*/
-int fs_readsuper()
+int fs_mount(dev_t __unused dev, unsigned int flags,
+	struct fsdriver_node *root_node, unsigned int *res_flags)
 {
   struct vattr *root_va;
 
-  fs_dev    = fs_m_in.REQ_DEV;
-  is_readonly_fs  = (fs_m_in.REQ_FLAGS & REQ_RDONLY) ? 1 : 0;
-  is_root_fs    = (fs_m_in.REQ_FLAGS & REQ_ISROOT) ? 1 : 0;
+  is_readonly_fs = !!(flags & REQ_RDONLY);
 
   /* Open root pnode */
   global_pu->pu_pn_root->pn_count = 1;
 
   /* Root pnode properties */
   root_va = &global_pu->pu_pn_root->pn_va;
-  fs_m_out.RES_INODE_NR = root_va->va_fileid;
-  fs_m_out.RES_MODE = root_va->va_mode;
-  fs_m_out.RES_FILE_SIZE_LO = root_va->va_size;
-  fs_m_out.RES_UID = root_va->va_uid;
-  fs_m_out.RES_GID = root_va->va_gid;
-  fs_m_out.RES_CONREQS = 1;
+  root_node->fn_ino_nr = root_va->va_fileid;
+  root_node->fn_mode = root_va->va_mode;
+  root_node->fn_size = root_va->va_size;
+  root_node->fn_uid = root_va->va_uid;
+  root_node->fn_gid = root_va->va_gid;
+  root_node->fn_dev = NO_DEV;
+
+  *res_flags = RES_NOFLAGS;
+
+  mounted = TRUE;
 
   return(OK);
 }
 
 
 /*===========================================================================*
- *				fs_mountpoint				     *
+ *				fs_mountpt				     *
  *===========================================================================*/
-int fs_mountpoint()
+int fs_mountpt(ino_t ino_nr)
 {
 /* This function looks up the mount point, it checks the condition whether
  * the partition can be mounted on the pnode or not.
@@ -51,13 +51,8 @@ int fs_mountpoint()
   struct puffs_node *pn;
   mode_t bits;
 
-  /*
-   * XXX: we assume that lookup was done first, so pnode can be found with
-   * puffs_pn_nodewalk.
-   */
-  if ((pn = puffs_pn_nodewalk(global_pu, 0, &fs_m_in.REQ_INODE_NR)) == NULL)
+  if ((pn = puffs_pn_nodewalk(global_pu, 0, &ino_nr)) == NULL)
 	return(EINVAL);
-
 
   if (pn->pn_mountpoint) r = EBUSY;
 
@@ -75,14 +70,13 @@ int fs_mountpoint()
 /*===========================================================================*
  *				fs_unmount				     *
  *===========================================================================*/
-int fs_unmount()
+void fs_unmount(void)
 {
   int error;
 
-  /* XXX there is no information about flags, 0 should be safe enough */
-  error = global_pu->pu_ops.puffs_fs_unmount(global_pu, 0);
+  /* Always force unmounting, as VFS will not tolerate failure. */
+  error = global_pu->pu_ops.puffs_fs_unmount(global_pu, MNT_FORCE);
   if (error) {
-        /* XXX we can't return any error to VFS */
   	lpuffs_debug("user handler failed to unmount filesystem!\
 		Force unmount!\n");
   } 
@@ -91,8 +85,6 @@ int fs_unmount()
 
   /* Finish off the unmount. */
   PU_SETSTATE(global_pu, PUFFS_STATE_UNMOUNTED);
-  unmountdone = TRUE;
+  mounted = FALSE;
   global_pu->pu_pn_root->pn_count--;
-
-  return(OK);
 }

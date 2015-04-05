@@ -1,4 +1,4 @@
-#	$NetBSD: bsd.lua.mk,v 1.4 2011/10/16 00:45:09 mbalmer Exp $
+#	$NetBSD: bsd.lua.mk,v 1.6 2013/09/12 15:36:16 joerg Exp $
 #
 # Build rules and definitions for Lua modules
 
@@ -48,6 +48,10 @@ _BSD_LUA_MK_=1
 .include <bsd.shlib.mk>
 .include <bsd.gcc.mk>
 
+.if defined(__MINIX) && ${USE_BITCODE:Uno} == "yes"
+LDFLAGS+= -L${DESTDIR}/usr/lib
+.endif # defined(__MINIX) && ${USE_BITCODE:Uno} == "yes"
+
 ##
 ##### Basic targets
 realinstall:	.PHONY lua-install
@@ -72,7 +76,7 @@ LUAC?=		/usr/bin/luac
 ##### Build rules
 
 # XX should these always be on?
-CFLAGS+=	-fPIC -DPIC
+CFLAGS+=	-fPIC
 
 .SUFFIXES:	.lua .luac
 .lua.luac:
@@ -143,6 +147,9 @@ ${LUA_TARG.${_M}}:	${LUA_OBJS.${_M}} ${DPADD} ${DPADD.${_M}}
 	    ${LDADD} ${LDADD.${_M}} ${LDFLAGS} ${LDFLAGS.${_M}}
 
 .endif
+
+DPADD+=	${LIBLUA}
+LDADD+=	-llua
 
 ##
 ## module install rules

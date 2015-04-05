@@ -1,15 +1,18 @@
-#	$NetBSD: Makefile,v 1.12 2011/05/20 22:29:55 joerg Exp $
+#	$NetBSD: Makefile,v 1.13 2013/09/12 05:54:38 joerg Exp $
 
 S=		${.CURDIR}/../../../..
 
 AFLAGS.cdboot.S= ${${ACTIVE_CC} == "clang":?-no-integrated-as:}
+.if defined(__MINIX)
+AFLAGS.cdboot.S+=	-Wa,--divide
+.endif # defined(__MINIX)
+
+PIE_CFLAGS=
+PIE_LDFLAGS=
+PIE_AFLAGS=
 
 NOMAN=		# defined
 .include <bsd.own.mk>
-
-.if defined(__MINIX)
-AFLAGS+=       -Wa,--divide
-.endif
 
 STRIPFLAG=	# nothing
 
@@ -49,9 +52,14 @@ CLEANFILES+=	${PROG}.tmp
 
 ${PROG}: ${OBJS}
 	${_MKTARGET_LINK}
+.if defined(__MINIX)
+	${CC} -o ${PROG}.tmp ${LDFLAGS} -Wl,--section-start=.text=${PRIMARY_LOAD_ADDRESS} \
+	    ${OBJS}
+.else
 	${CC} -o ${PROG}.tmp ${LDFLAGS} -Wl,-Ttext,${PRIMARY_LOAD_ADDRESS} \
 	    ${OBJS}
-	@ set -- $$( ${NM} -t d ${PROG}.tmp | grep 'free_space' \
+.endif
+	@ set -- $$( ${NM} -t d ${PROG}.tmp | grep '\<free_space\>' \
 		| ${TOOL_SED} 's/^0*//'  ); \
 		echo "#### There are $$1 free bytes in ${PROG}"
 	${OBJCOPY} -O binary ${PROG}.tmp ${PROG}

@@ -1,4 +1,4 @@
-/*	$NetBSD: stat.h,v 1.65 2012/12/01 08:20:55 skrll Exp $	*/
+/*	$NetBSD: stat.h,v 1.68 2013/10/17 18:01:11 njoly Exp $	*/
 
 /*-
  * Copyright (c) 1982, 1986, 1989, 1993
@@ -42,9 +42,8 @@
 #include <sys/featuretest.h>
 #include <sys/types.h>		/* XXX */
 
-#if defined(_NETBSD_SOURCE)
-#include <sys/time.h>
-#elif (_POSIX_C_SOURCE - 0) >= 200809L || (_XOPEN_SOURCE - 0) >= 700
+#if (_POSIX_C_SOURCE - 0) >= 200809L || (_XOPEN_SOURCE - 0) >= 700 || \
+    defined(_NETBSD_SOURCE)
 /*
  * POSIX:2008 / XPG7 requires struct timespec to be declared in
  * this header, but does not provide the usual exemption
@@ -58,7 +57,6 @@
 #endif
 
 struct stat {
-#  ifdef AVOID_USING_BIG_TYPES
 	dev_t	  st_dev;		/* inode's device */
 	mode_t	  st_mode;		/* inode protection mode */
 	ino_t	  st_ino;		/* inode's number */
@@ -66,16 +64,6 @@ struct stat {
 	uid_t	  st_uid;		/* user ID of the file's owner */
 	gid_t	  st_gid;		/* group ID of the file's group */
 	dev_t	  st_rdev;		/* device type */
-#  else /* !AVOID_USING_BIG_TYPES */
-/* XXX For now MINIX is still using big_xxx_t types; just cut this when the day finally comes! */
-  big_dev_t     st_dev;               /* inode's device */
-  big_mode_t    st_mode;              /* inode protection mode */
-  big_ino_t	st_ino;		      /* inode's number */
-  big_nlink_t   st_nlink;             /* number of hard links */
-  big_uid_t     st_uid;               /* user ID of the file's owner */
-  big_gid_t     st_gid;               /* group ID of the file's group */
-  big_dev_t     st_rdev;              /* device type */
-#  endif /* AVOID_USING_BIG_TYPES */
 #if (_POSIX_C_SOURCE - 0) >= 200809L || (_XOPEN_SOURCE - 0) >= 700 || \
     defined(_NETBSD_SOURCE)
 	struct	  timespec st_atim;	/* time of last access */
@@ -92,16 +80,7 @@ struct stat {
 	time_t	  st_birthtime;		/* time of creation */
 	long	  st_birthtimensec;	/* nsec of time of creation */
 #endif
-#ifdef ST_SIZE_OFF_T
-  off_t		st_size;	     	/* file size, in off_t bytes */
-  off_t		st_size_rest;
-#else
-#  ifdef AVOID_USING_BIG_TYPES
 	off_t	  st_size;		/* file size, in bytes */
-#  else /* !AVOID_USING_BIG_TYPES */ /* XXX also cut here */
-  big_off_t st_size;		/* file size, in bytes */
-#  endif /* AVOID_USING_BIG_TYPES */
-#endif
 	blkcnt_t  st_blocks;		/* blocks allocated for file */
 	blksize_t st_blksize;		/* optimal blocksize for I/O */
 	uint32_t  st_flags;		/* user defined flags for file */
@@ -120,11 +99,11 @@ struct stat {
 
 #if defined(_NETBSD_SOURCE)
 #define	st_atimespec		st_atim
-#define	st_atimensec		st_atimespec.tv_nsec
+#define	st_atimensec		st_atim.tv_nsec
 #define	st_mtimespec		st_mtim
-#define	st_mtimensec		st_mtimespec.tv_nsec
+#define	st_mtimensec		st_mtim.tv_nsec
 #define	st_ctimespec		st_ctim
-#define	st_ctimensec		st_ctimespec.tv_nsec
+#define	st_ctimensec		st_ctim.tv_nsec
 #define	st_birthtimespec        st_birthtim
 #define st_birthtimensec	st_birthtimespec.tv_nsec
 #endif
@@ -257,12 +236,6 @@ struct stat {
 #define UTIME_OMIT	((1 << 30) - 2)
 #endif
 
-#if defined(__minix)
-#include <machine/vmparam.h>
-/* Convenient constant to use when st_blocksize field is required. */
-#define MINIX_ST_BLKSIZE PAGE_SIZE
-#endif
-
 #if !defined(_KERNEL) && !defined(_STANDALONE)
 #include <sys/cdefs.h>
 
@@ -288,20 +261,24 @@ int	mknod(const char *, mode_t, dev_t) __RENAME(__mknod50);
 #endif
 #endif /* defined(_XOPEN_SOURCE) || defined(_NETBSD_SOURCE) */
 
-#if defined(_NETBSD_SOURCE) && !defined(__minix)
+#if defined(_NETBSD_SOURCE)
 int	chflags(const char *, unsigned long);
 int	fchflags(int, unsigned long);
 int	lchflags(const char *, unsigned long);
 int	lchmod(const char *, mode_t);
-#endif /* defined(_NETBSD_SOURCE) && !defined(__minix) */
+#endif /* defined(_NETBSD_SOURCE) */
 
 #ifndef __LIBC12_SOURCE__
 /*
  * X/Open Extended API set 2 (a.k.a. C063)
  */
 #if (_POSIX_C_SOURCE - 0) >= 200809L || (_XOPEN_SOURCE - 0) >= 700 || \
-    defined(_INCOMPLETE_XOPEN_C063) || defined(_NETBSD_SOURCE)
+    defined(_NETBSD_SOURCE) || defined(_INCOMPLETE_XOPEN_C063)
+int     fchmodat(int, const char *, mode_t, int);
 int     fstatat(int, const char *, struct stat *, int);
+int     mkdirat(int, const char *, mode_t);
+int     mkfifoat(int, const char *, mode_t);
+int     mknodat(int, const char *, mode_t, dev_t);
 int     utimensat(int, const char *, const struct timespec *, int);
 #endif
 
@@ -309,6 +286,7 @@ int     utimensat(int, const char *, const struct timespec *, int);
 int utimens(const char *, const struct timespec *);
 int lutimens(const char *, const struct timespec *);
 #endif
+
 #if (_POSIX_C_SOURCE - 0) >= 200809L || (_XOPEN_SOURCE - 0) >= 700 || \
     defined(_NETBSD_SOURCE)
 int futimens(int, const struct timespec *);

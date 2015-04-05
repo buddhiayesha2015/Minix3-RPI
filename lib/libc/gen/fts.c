@@ -56,9 +56,7 @@ __RCSID("$NetBSD: fts.c,v 1.46 2012/09/26 15:33:43 msaitoh Exp $");
 #include <unistd.h>
 
 #if ! HAVE_NBTOOL_CONFIG_H
-#ifndef __minix
 #define	HAVE_STRUCT_DIRENT_D_NAMLEN
-#endif
 #endif
 
 static FTSENT	*fts_alloc(FTS *, const char *, size_t);
@@ -213,6 +211,9 @@ fts_open(char * const *argv, int options,
 	 * and ".." are all fairly nasty problems.  Note, if we can't get the
 	 * descriptor we run anyway, just more slowly.
 	 */
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
+#endif
 	if (!ISSET(FTS_NOCHDIR)) {
 		if ((sp->fts_rfd = open(".", O_RDONLY | O_CLOEXEC, 0)) == -1)
 			SET(FTS_NOCHDIR);
@@ -1231,11 +1232,3 @@ bail:
 	}
 	return ret;
 }
-
-#if defined(__minix) && defined(__weak_alias)
-__weak_alias(fts_children, __fts_children60)
-__weak_alias(fts_close, __fts_close60)
-__weak_alias(fts_open, __fts_open60)
-__weak_alias(fts_read, __fts_read60)
-__weak_alias(fts_set, __fts_set60)
-#endif

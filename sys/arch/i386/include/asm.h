@@ -1,4 +1,4 @@
-/*	$NetBSD: asm.h,v 1.39 2010/12/20 21:11:24 joerg Exp $	*/
+/*	$NetBSD: asm.h,v 1.41 2013/09/12 15:36:17 joerg Exp $	*/
 
 /*-
  * Copyright (c) 1990 The Regents of the University of California.
@@ -41,7 +41,7 @@
 #include "opt_multiprocessor.h"
 #endif
 
-#ifdef PIC
+#ifdef __PIC__
 #define PIC_PROLOGUE	\
 	pushl	%ebx;	\
 	call	1f;	\
@@ -85,7 +85,7 @@
 /* let kernels and others override entrypoint alignment */
 #if !defined(_ALIGN_TEXT) && !defined(_KERNEL)
 # ifdef _STANDALONE
-#  define _ALIGN_TEXT .align 4
+#  define _ALIGN_TEXT .align 1
 # elif defined __ELF__
 #  define _ALIGN_TEXT .align 16
 # else
@@ -191,7 +191,7 @@
 #define	__KERNEL_RCSID(_n, _s)	RCSID(_s)
 #endif
 
-#if defined(__ELF__) || defined(__minix)
+#ifdef __ELF__
 #define	WEAK_ALIAS(alias,sym)						\
 	.weak alias;							\
 	alias = sym
@@ -215,16 +215,9 @@
 	.popsection
 #endif /* __STDC__ */
 
-#ifdef __minix
+#if defined(__minix)
 #define IMPORT(sym)               \
         .extern _C_LABEL(sym)
-
-#define KERVEC_ORIG 32     /* syscall trap to kernel */
-#define IPCVEC_ORIG 33     /* ipc trap to kernel  */
-
-#define KERVEC_UM 34     /* syscall trap to kernel, user-mapped code */
-#define IPCVEC_UM 35     /* ipc trap to kernel, user-mapped code  */
-
-#endif
+#endif /* defined(__minix) */
 
 #endif /* !_I386_ASM_H_ */

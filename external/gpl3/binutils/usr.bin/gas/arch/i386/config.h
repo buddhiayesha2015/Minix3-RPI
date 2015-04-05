@@ -5,6 +5,13 @@
 /* config.h.  Generated from config.in by configure.  */
 /* config.in.  Generated from configure.in by autoheader.  */
 
+/* Check that config.h is #included before system headers
+   (this works only for glibc, but that should be enough).  */
+#if defined(__GLIBC__) && !defined(__FreeBSD_kernel__) && !defined(__CONFIG_H__)
+#  error config.h must be #included before system headers
+#endif
+#define __CONFIG_H__ 1
+
 /* Define if building universal (internal helper macro) */
 /* #undef AC_APPLE_UNIVERSAL_BUILD */
 
@@ -42,21 +49,45 @@
 
 /* Define to 1 if translation of program messages to the user's native
    language is requested. */
-#define ENABLE_NLS 1
+/* #undef ENABLE_NLS */
 
 /* Define to 1 if you have `alloca', as a function or macro. */
-#define HAVE_ALLOCA 1
+/* #undef HAVE_ALLOCA */
 
 /* Define to 1 if you have <alloca.h> and it should be used (not on Ultrix).
    */
 /* #undef HAVE_ALLOCA_H */
 
+/* Define to 1 if you have the declaration of `free', and to 0 if you don't.
+   */
+#define HAVE_DECL_FREE 1
+
+/* Define to 1 if you have the declaration of `getenv', and to 0 if you don't.
+   */
+#define HAVE_DECL_GETENV 1
+
 /* Is the prototype for getopt in <unistd.h> in the expected format? */
 #define HAVE_DECL_GETOPT 1
+
+/* Define to 1 if you have the declaration of `malloc', and to 0 if you don't.
+   */
+#define HAVE_DECL_MALLOC 1
 
 /* Define to 1 if you have the declaration of `mempcpy', and to 0 if you
    don't. */
 #define HAVE_DECL_MEMPCPY 0
+
+/* Define to 1 if you have the declaration of `realloc', and to 0 if you
+   don't. */
+#define HAVE_DECL_REALLOC 1
+
+/* Define to 1 if you have the declaration of `stpcpy', and to 0 if you don't.
+   */
+#define HAVE_DECL_STPCPY 1
+
+/* Define to 1 if you have the declaration of `strstr', and to 0 if you don't.
+   */
+#define HAVE_DECL_STRSTR 1
 
 /* Define to 1 if you have the declaration of `vsnprintf', and to 0 if you
    don't. */
@@ -96,10 +127,10 @@
 #define HAVE_STRING_H 1
 
 /* Define if <sys/stat.h> has struct stat.st_mtim.tv_nsec */
-/* #undef HAVE_ST_MTIM_TV_NSEC */
+#define HAVE_ST_MTIM_TV_NSEC 1
 
 /* Define if <sys/stat.h> has struct stat.st_mtim.tv_sec */
-/* #undef HAVE_ST_MTIM_TV_SEC */
+#define HAVE_ST_MTIM_TV_SEC 1
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #define HAVE_SYS_STAT_H 1
@@ -224,20 +255,23 @@
 /* Using strict COFF? */
 /* #undef STRICTCOFF */
 
+/* Define if you can safely include both <string.h> and <strings.h>. */
+#define STRING_WITH_STRINGS 1
+
 /* Target alias. */
-#define TARGET_ALIAS "i486--netbsdelf"
+#define TARGET_ALIAS "i586-elf32-minix"
 
 /* Define as 1 if big endian. */
 /* #undef TARGET_BYTES_BIG_ENDIAN */
 
 /* Canonical target. */
-#define TARGET_CANONICAL "i486--netbsdelf"
+#define TARGET_CANONICAL "i586-elf32-minix"
 
 /* Target CPU. */
-#define TARGET_CPU "i486"
+#define TARGET_CPU "i586"
 
 /* Target OS. */
-#define TARGET_OS "netbsdelf"
+#define TARGET_OS "minix"
 
 /* Define if default target is PowerPC Solaris. */
 /* #undef TARGET_SOLARIS_COMMENT */
@@ -246,7 +280,7 @@
 /* #undef TARGET_SYMBIAN */
 
 /* Target vendor. */
-#define TARGET_VENDOR ""
+#define TARGET_VENDOR "elf32"
 
 /* Use b modifier when opening binary files? */
 /* #undef USE_BINARY_FOPEN */
@@ -283,7 +317,7 @@
 /* #undef USING_CGEN */
 
 /* Version number of package */
-#define VERSION "2.21.1"
+#define VERSION "2.23.2"
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */
@@ -308,14 +342,14 @@
 /* #undef _LARGE_FILES */
 
 /* Define to 1 if on MINIX. */
-/* #undef _MINIX */
+#define _MINIX 1
 
 /* Define to 2 if the system does not provide POSIX.1 features except with
    this defined. */
-/* #undef _POSIX_1_SOURCE */
+#define _POSIX_1_SOURCE 2
 
 /* Define to 1 if you need to in order for `stat' and other things to work. */
-/* #undef _POSIX_SOURCE */
+#define _POSIX_SOURCE 1
 
 /* Define to `__inline__' or `__inline' if that's what the C compiler
    calls it, or to nothing if 'inline' is not supported under any name.  */

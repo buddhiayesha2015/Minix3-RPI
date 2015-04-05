@@ -1,4 +1,4 @@
-#	$NetBSD: Makefile,v 1.189 2012/09/16 13:47:41 rmind Exp $
+#	$NetBSD: Makefile,v 1.209 2013/11/28 12:08:56 mrg Exp $
 #	from: @(#)Makefile	5.25.1.1 (Berkeley) 5/7/91
 
 .include <bsd.own.mk>
@@ -19,16 +19,61 @@ SUBDIR+=	../external/gpl3/gcc/lib/libgcc .WAIT
 . endif
 .endif
 
-#LSC MINIX libc depends on libminlib because of minix/malloc-debug.c
-SUBDIR+=	libminlib
+.if defined(__MINIX)
+#LSC MINIX libc depends on
+# - libmthread because of sys/lib/libunwind
 SUBDIR+=	.WAIT
 
-SUBDIR+=	libsys
+SUBDIR+=	../minix/lib/libsys
+SUBDIR+=	../minix/lib/libmthread
 SUBDIR+=	.WAIT
-
+.endif # defined(__MINIX)
 SUBDIR+=	libc
 SUBDIR+=	.WAIT
 
+.if defined(__MINIX)
+SUBDIR+=	../minix/lib/libasyn \
+		../minix/lib/libaudiodriver \
+		../minix/lib/libbdev \
+		../minix/lib/libblockdriver \
+		../minix/lib/libchardriver \
+		../minix/lib/libddekit \
+		../minix/lib/libdevman \
+		../minix/lib/libexec \
+		../minix/lib/libfetch \
+		../minix/lib/libfsdriver \
+		../minix/lib/libinputdriver \
+		../minix/lib/libminc \
+		../minix/lib/libminixfs \
+		../minix/lib/libnetdriver \
+		../minix/lib/libsffs \
+		../minix/lib/libtimers \
+		../minix/lib/libusb \
+		../minix/lib/libvtreefs
+
+.if (${HAVE_LIBGCC} == "no")
+SUBDIR+=	../minix/lib/libgcc_s_empty
+.endif
+
+.if (${MKLWIP} == "yes")
+SUBDIR+=	../minix/lib/liblwip \
+		../minix/lib/libnetsock
+.endif
+
+.if (${MACHINE_ARCH} == "i386")
+SUBDIR+=	../minix/lib/libhgfs \
+		../minix/lib/libvassert \
+		../minix/lib/libvboxfs \
+		../minix/lib/libvirtio
+.endif
+
+.if (${MACHINE_ARCH} == "earm")
+SUBDIR+=	../minix/lib/libclkconf \
+		../minix/lib/libgpio \
+		../minix/lib/libi2cdriver
+.endif
+
+.endif # defined(__MINIX)
 #
 # The SUBDIRs above are included here for completeness but should be built
 # and installed prior to make(dependall) in this file, as libraries listed
@@ -37,35 +82,32 @@ SUBDIR+=	.WAIT
 
 #SUBDIR+=	i18n_module
 
-SUBDIR+= libcompat_minix libblockdriver libchardriver     \
-       libnetdriver libm libtimers libutil \
-       libz libfetch libvtreefs libaudiodriver libmthread   \
-       libexec libdevman libusb libasyn librmt \
-       libddekit libminixfs libbdev libelf libminc libcrypt libterminfo \
-       libutil libbz2 libprop \
-       libpuffs libsffs
+SUBDIR+=	\
+		libbz2 \
+		libcrypt \
+		libm \
+		libpci libprop \
+		libpuffs librmt \
+		libterminfo \
+		libutil libz
 
-.if (${MKLWIP} == "yes")
-SUBDIR += liblwip libnetsock
+.if !defined(BSD_MK_COMPAT_FILE)
+#SUBDIR+=	libkern
 .endif
 
-.if (${MACHINE_ARCH} == "i386")
-SUBDIR += libvassert libhgfs libvboxfs libvirtio
+.if (${MACHINE_CPU} == "arm")
+LIBC_MACHINE_ARCH?=${MACHINE_ARCH}
+.if empty(LIBC_MACHINE_ARCH:M*hf*)
+.if !defined(__MINIX)
+SUBDIR+=	libc_vfp
 .endif
-
-.if (${MACHINE_ARCH} == "earm")
-SUBDIR += libgpio libpadconf
 .endif
-
+.endif
 .if (${MKRUMP} != "no")
 SUBDIR+=	librumpclient
 .endif
 .if (${MKSKEY} != "no")
 SUBDIR+=	libskey
-.endif
-
-.if (${MKCRYPTO} != "no")
-SUBDIR+=	../crypto/external/bsd/netpgp/libmj
 .endif
 
 .if (${MKMDNS} != "no")
@@ -76,16 +118,13 @@ SUBDIR+=	../external/apache2/mDNSResponder/lib
 
 SUBDIR+=	../external/bsd/flex/lib
 #SUBDIR+=	../external/bsd/tre/lib
-#SUBDIR+=	../external/bsd/libdwarf/lib
-#SUBDIR+=	../external/bsd/libelf/lib
-#SUBDIR+=	../external/bsd/libevent/lib
+SUBDIR+=	../external/bsd/libelf/lib
 #SUBDIR+=	../external/bsd/liblzf/lib
 #SUBDIR+=	../external/bsd/libpcap/lib
 
-#SUBDIR+=	../external/mit/lua/lib
-#SUBDIR+=	../external/mit/expat/lib
+SUBDIR+=	../external/mit/expat/lib
 
-#SUBDIR+=	../external/public-domain/sqlite/lib
+SUBDIR+=	../external/public-domain/sqlite/lib
 SUBDIR+=	../external/public-domain/xz/lib
 
 #SUBDIR+=	../gnu/lib/libmalloc
@@ -94,15 +133,19 @@ SUBDIR+=	../external/public-domain/xz/lib
 . if ${HAVE_GCC} == 4
 #SUBDIR+=	../gnu/lib/libobjc4
 . else
-#SUBDIR+=	../external/gpl3/gcc/lib/libobjc
-#SUBDIR+=	../external/gpl3/gcc/lib/libgomp
+.   if !defined(__MINIX) || ${MKLIBSTDCXX} == "yes"
+SUBDIR+=	../external/gpl3/gcc/lib/libobjc
+SUBDIR+=	../external/gpl3/gcc/lib/libgomp
+.   endif # !defined(__MINIX) || ${MKLIBSTDCXX} == "yes"
 . endif
-. if ${HAVE_GCC} >= 45 && !defined(MLIBDIR) && !defined(__MINIX)
+. if ${HAVE_GCC} >= 45 && !defined(MLIBDIR)
+.   if !defined(__MINIX) || ${MKLIBSTDCXX} == "yes"
 # Should probably move GMP, MPFR and MPC builds into the GCC >= 4.5
 # specific build area, but we get better parallelism this way.
 SUBDIR+=	../external/lgpl3/gmp/lib/libgmp
 SUBDIR+=	../external/lgpl3/mpfr/lib/libmpfr
-SUBDIR+=	../external/lgpl2/mpc/lib/libmpc
+SUBDIR+=	../external/lgpl3/mpc/lib/libmpc
+.   endif # !defined(__MINIX) || ${MKLIBSTDCXX} == "yes"
 . endif
 .endif
 
@@ -113,14 +156,22 @@ SUBDIR+=	../external/lgpl2/mpc/lib/libmpc
 #==================== 1st library dependency barrier ====================
 SUBDIR+=	.WAIT
 
+.if (${MKCRYPTO} != "no")
+SUBDIR+=	../crypto/external/bsd/netpgp/libmj
+SUBDIR+=	../crypto/external/bsd/netpgp/lib/verify # depends on libz
+.endif
+
+#SUBDIR+=	../external/bsd/libdwarf/lib # depends on libelf
+SUBDIR+=	../external/mit/lua/lib # depends on libm
 SUBDIR+=	libcurses	# depends on libterminfo
 #SUBDIR+=	libdm		# depends on libprop
 SUBDIR+=	libedit		# depends on libterminfo
-#SUBDIR+=	libexecinfo 	# depends on libelf
+SUBDIR+=	libexecinfo 	# depends on libelf
 #SUBDIR+=	libppath	# depends on libprop
 #SUBDIR+=	libperfuse	# depends on libpuffs
 #SUBDIR+=	libquota	# depends on libprop and librpcsvc
 SUBDIR+=	librefuse	# depends on libpuffs
+#SUBDIR+=	libisns 	# depends on libpthread
 .if (${MKRUMP} != "no")
 SUBDIR+=	librumpuser	# depends on libpthread
 SUBDIR+=	librumphijack	# depends on librumpclient and libpthread
@@ -128,7 +179,6 @@ SUBDIR+=	librumphijack	# depends on librumpclient and libpthread
 
 .if (${MKNPF} != "no")
 SUBDIR+=	libnpf		# depends on libprop
-#SUBDIR+=	npf
 .endif
 
 .if (${MKCRYPTO} != "no")
@@ -151,25 +201,37 @@ SUBDIR+=	../external/gpl2/lvm2/lib	# depends on libprop
 SUBDIR+=	../external/gpl3/binutils/lib	# libbfd depends on libz
 .endif
 
-.if (${MKGCC} != "no" && ${MKCXX} != "no")
+.if (${MKLIBCXX} != "no")
+SUBDIR+=	../external/bsd/libc++
+.endif
+
+.if (${MKGCC} != "no" && ${MKCXX} != "no" && ${MKLIBSTDCXX} != "no")
 . if ${HAVE_GCC} == 4
 SUBDIR+=	../gnu/lib/libstdc++-v3_4	# depends on libm
 SUBDIR+=	../gnu/lib/libsupc++4
 . else
-#SUBDIR+=	../external/gpl3/gcc/lib/libstdc++-v3
-#SUBDIR+=	../external/gpl3/gcc/lib/libsupc++
+SUBDIR+=	../external/gpl3/gcc/lib/libstdc++-v3
+SUBDIR+=	../external/gpl3/gcc/lib/libsupc++
 . endif
 .endif
 
 #==================== 2nd library dependency barrier ====================
 SUBDIR+=	.WAIT
 
+.if (${MKNPF} != "no")
+SUBDIR+=	npf		# depends on libnpf
+.endif
+
 .if (${MKATF} != "no")
 SUBDIR+=	../external/bsd/atf/lib		# depends on libstdc++
 .endif
 
-#SUBDIR+=	libform		# depends on libcurses
-#SUBDIR+=	libmenu		# depends on libcurses
+.if (${MKKYUA} != "no")
+SUBDIR+=	../external/bsd/lutok/lib	# depends on lua and libstdc++
+.endif
+
+SUBDIR+=	libform		# depends on libcurses
+SUBDIR+=	libmenu		# depends on libcurses
 #SUBDIR+=	libradius	# depends on libcrypto if (${MKCRYPTO} != "no")
 .if (${MKRUMP} != "no")
 SUBDIR+=	librump		# depends on librumpuser
@@ -185,7 +247,7 @@ SUBDIR+=	../crypto/external/bsd/openssh/lib # depends on libcrypto, libz
 SUBDIR+=	../crypto/external/bsd/netpgp/lib  # depends on libcrypto, ...
 .endif
 
-#SUBDIR+=	../external/bsd/bind/lib	# depends on libcrypto
+SUBDIR+=	../external/bsd/libevent/lib	# depends on libcrypto
 #SUBDIR+=	../external/bsd/fetch/lib	# depends on libssl
 
 .if (${MKLDAP} != "no")
@@ -194,6 +256,8 @@ SUBDIR+=	../external/bsd/openldap/lib	# depends on libcrypto, ...
 
 #==================== 3rd library dependency barrier ====================
 SUBDIR+=	.WAIT
+
+#SUBDIR+=	../external/bsd/bind/lib	# depends on heimdal, libcrypto
 
 .if (${MKRUMP} != "no")
 SUBDIR+=	librumpdev	# depends on librump
@@ -209,7 +273,13 @@ SUBDIR+=	libpam		# depends on heimdal
 SUBDIR+=	../crypto/external/bsd/libsaslc	# depends on heimdal, openssl
 .endif
 
-#SUBDIR+=	../external/bsd/mdocml/lib
+.if ${MKSLJIT} != "no"
+SUBDIR+=	../external/bsd/sljit/lib
+SUBDIR+=	.WAIT
+SUBDIR+=	libbpfjit
+.endif
+
+SUBDIR+=	../external/bsd/mdocml/lib
 
 .if (${MKRUMP} != "no")
 #==================== 4th library dependency barrier ====================
@@ -217,10 +287,18 @@ SUBDIR+=	.WAIT
 
 SUBDIR+=	libukfs		# depends on librumpvfs, librump
 
+.if (${MKTPM} != "no")
+SUBDIR+=	../crypto/external/cpl/trousers/lib
+.endif
+
 #==================== 5th library dependency barrier ====================
 SUBDIR+=	.WAIT
 
 SUBDIR+=	libp2k		# depends on libukfs, librumpvfs, libpuffs
+
+.if (${MKTPM} != "no")
+SUBDIR+=	../crypto/external/cpl/tpm-tools/lib	# depends on trousers
+.endif
 
 .if !defined(BSD_MK_COMPAT_FILE)
 SUBDIR+=	../sys/rump/dev/lib
@@ -231,32 +309,7 @@ SUBDIR+=	../sys/rump/net/lib
 .endif
 
 # Lua bindings come last, they might depend on anything
-#SUBDIR+=	lua
+SUBDIR+=	lua
 
-#
-# build_install logic for src/Makefile.
-# Compute a list of subdirectories delimited by .WAIT.
-# Run "make dependall && make install" for all subdirectories in a group
-# concurrently, but wait after each group.
-#
-SUBDIR_GROUPS=	1
-CUR_GROUP:=	1
-.for dir in ${SUBDIR}
-.  if ${dir} == ".WAIT"
-CUR_GROUP:=	${CUR_GROUP}1
-SUBDIR_GROUPS:=	${SUBDIR_GROUPS} ${CUR_GROUP}
-.  else
-SUBDIR_GROUP.${CUR_GROUP}+=	${dir}
-.endif
-
-.endfor
-
-build_install:
-.for group in ${SUBDIR_GROUPS}
-.  if !empty(SUBDIR_GROUP.${group})
-	${MAKEDIRTARGET} . ${SUBDIR_GROUP.${group}:C/^/dependall-/}
-	${MAKEDIRTARGET} . ${SUBDIR_GROUP.${group}:C/^/install-/}
-.  endif
-.endfor
-
+.include <bsd.buildinstall.mk>
 .include <bsd.subdir.mk>

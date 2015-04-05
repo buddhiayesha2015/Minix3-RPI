@@ -1,4 +1,4 @@
-# $NetBSD: Makefile.boot,v 1.58 2012/08/10 12:18:15 joerg Exp $
+# $NetBSD: Makefile.boot,v 1.60 2013/08/21 17:15:26 matt Exp $
 
 S=	${.CURDIR}/../../../../..
 
@@ -91,18 +91,6 @@ CPPFLAGS+=	-Wno-pointer-sign
 
 I386_STAND_DIR?= $S/arch/i386/stand
 
-CLEANFILES+= machine x86
-
-.if !make(obj) && !make(clean) && !make(cleandir)
-.BEGIN:
-	-rm -f machine && ln -s $S/arch/i386/include machine
-	-rm -f x86 && ln -s $S/arch/x86/include x86
-.ifdef LIBOBJ
-	-rm -f lib && ln -s ${LIBOBJ}/lib lib
-	mkdir -p ${LIBOBJ}/lib
-.endif
-.endif
-
 ### find out what to use for libi386
 I386DIR= ${I386_STAND_DIR}/lib
 .include "${I386DIR}/Makefile.inc"
@@ -121,6 +109,9 @@ KERN_AS= library
 .include "${S}/lib/libkern/Makefile.inc"
 LIBKERN= ${KERNLIB}
 .else
+
+USE_BITCODE=no
+
 # use MINIX minc
 LIBKERN= ${DESTDIR}/usr/lib/libminc.a
 .endif
@@ -144,12 +135,18 @@ CLEANFILES+= ${PROG}.tmp ${PROG}.map ${PROG}.syms vers.c
 vers.c: ${VERSIONFILE} ${SOURCES} ${LIBLIST} ${.CURDIR}/../Makefile.boot
 	${HOST_SH} ${S}/conf/newvers_stand.sh ${VERSIONFILE} x86 ${NEWVERSWHAT}
 
+.if defined(__MINIX)
+# BJG
+# -Wl,-Ttext,0 changed to --section-start=.text=0 twice below of a gold problem.
+# did not leave both versions in because of the huge continued line.
+.endif
+
 # Anything that calls 'real_to_prot' must have a %pc < 0x10000.
 # We link the program, find the callers (all in libi386), then
 # explicitly pull in the required objects before any other library code.
 ${PROG}: ${OBJS} ${LIBLIST} ${.CURDIR}/../Makefile.boot
 	${_MKTARGET_LINK}
-	bb="$$( ${CC} -o ${PROG}.syms ${LDFLAGS} -Wl,-Ttext,0 -Wl,-cref \
+	bb="$$( ${CC} -o ${PROG}.syms ${LDFLAGS} -Wl,--section-start=.text=0 -Wl,-cref \
 	    ${OBJS} ${LIBLIST} | ( \
 		while read symbol file; do \
 			[ -z "$$file" ] && continue; \
@@ -165,8 +162,10 @@ ${PROG}: ${OBJS} ${LIBLIST} ${.CURDIR}/../Makefile.boot
 		do :; \
 		done; \
 	) )"; \
-	${CC} -o ${PROG}.syms ${LDFLAGS} -Wl,-Ttext,0 \
+	${CC} -o ${PROG}.syms ${LDFLAGS} -Wl,--section-start=.text=0 \
 		-Wl,-Map,${PROG}.map -Wl,-cref ${OBJS} $$bb ${LIBLIST}
 	${OBJCOPY} -O binary ${PROG}.syms ${PROG}
 
 .include <bsd.prog.mk>
+KLINK_MACHINE=	i386
+.include <bsd.klinks.mk>

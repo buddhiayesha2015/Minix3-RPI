@@ -1,4 +1,4 @@
-#	$NetBSD: bsd.x11.mk,v 1.106 2012/04/04 10:59:47 joerg Exp $
+#	$NetBSD: bsd.x11.mk,v 1.108 2013/06/05 23:14:13 mrg Exp $
 
 .include <bsd.init.mk>
 
@@ -17,12 +17,17 @@ CPPFLAGS+=		-DNO_ALLOCA
 X11FLAGS.VERSION=	-DOSMAJORVERSION=5 -DOSMINORVERSION=99		# XXX
 
 #	 THREADS_DEFINES
-X11FLAGS.THREADS=	-DXTHREADS -D_REENTRANT -DXUSE_MTSAFE_API \
+# LSC (MINIX): Not supported: -D_REENTRANT
+X11FLAGS.THREADS=	-DXTHREADS -DXUSE_MTSAFE_API \
 			-DXNO_MTSAFE_PWDAPI
 
 #	 CONNECTION_FLAGS
+.if !defined(__MINIX)
 X11FLAGS.CONNECTION=	-DTCPCONN -DUNIXCONN -DHAS_STICKY_DIR_BIT \
 			-DHAS_FCHOWN
+.else
+X11FLAGS.CONNECTION=	-DTCPCONN -DUNIXCONN -DHAS_STICKY_DIR_BIT
+.endif # !defined(__MINIX)
 
 .if (${USE_INET6} != "no")
 X11FLAGS.CONNECTION+=	-DIPv6
@@ -88,6 +93,10 @@ X11FLAGS.SERVER=	-DSHAPE -DXKB -DLBX -DXAPPGROUP -DXCSECURITY \
 X11FLAGS.OS_DEFINES=	-DDDXOSINIT -DSERVER_LOCK -DDDXOSFATALERROR \
 			-DDDXOSVERRORF -DDDXTIME -DUSB_HID
 
+.if defined(__MINIX)
+X11FLAGS.OS_DEFINES+=	-DXOS_USE_NO_LOCKING
+.endif # defined(__MINIX)
+
 .if !(${MACHINE} == "acorn32"	|| \
     (${MACHINE} == "alpha"  && ${X11FLAVOUR} != "Xorg")	|| \
     ${MACHINE} == "amiga"	|| \
@@ -130,13 +139,13 @@ X11FLAGS.LOADABLE=	-DXFree86LOADER -DIN_MODULE -DXFree86Module \
 .if ${X11FLAVOUR} == "Xorg"
 XVENDORNAMESHORT=	'"X.Org"'
 XVENDORNAME=		'"The X.Org Foundation"'
-XORG_RELEASE=		'"Release 1.10.3"'
+XORG_RELEASE=		'"Release 1.10.6"'
 __XKBDEFRULES__=	'"xorg"'
 XLOCALE.DEFINES=	-DXLOCALEDIR=\"${X11LIBDIR}/locale\" \
 			-DXLOCALELIBDIR=\"${X11LIBDIR}/locale\"
 
 # XXX oh yeah, fix me later
-XORG_VERSION_CURRENT="(((1) * 10000000) + ((10) * 100000) + ((3) * 1000) + 0)"
+XORG_VERSION_CURRENT="(((1) * 10000000) + ((10) * 100000) + ((6) * 1000) + 0)"
 .endif
 
 PRINT_PACKAGE_VERSION=	awk '/^PACKAGE_VERSION=/ {			\
@@ -172,7 +181,11 @@ CPPFLAGS+=		-I${DESTDIR}${X11INCDIR}
 CPPFLAGS+=		-D__AMD64__
 .endif
 
+.if !defined(__MINIX)
 LDFLAGS+=		-Wl,-rpath,${X11USRLIBDIR} -L=${X11USRLIBDIR}
+.else
+LDFLAGS+=		-Wl,-rpath,${X11USRLIBDIR} -L${DESTDIR}${X11USRLIBDIR}
+.endif # !defined(__MINIX)
 
 
 #
@@ -229,7 +242,8 @@ pkgconfig-install:
 realall:	${_PKGCONFIG_FILES:O:u}
 realinstall:	pkgconfig-install
 
-.for _pkg in ${PKGCONFIG:O:u}
+.for _pkg in ${PKGCONFIG:O:u}	# {
+
 PKGDIST.${_pkg}?=	${X11SRCDIR.${PKGDIST:U${_pkg}}}
 _PKGDEST.${_pkg}=	${DESTDIR}${X11USRLIBDIR}/pkgconfig/${_pkg}.pc
 
@@ -241,7 +255,14 @@ FILESMODE_${_pkg}.pc=	${NONBINMODE}
 
 ${_PKGDEST.${_pkg}}: ${_pkg}.pc __fileinstall
 pkgconfig-install: ${_PKGDEST.${_pkg}}
-.endfor
+
+# Add a dependancy on the configure file if it exists; this way we
+# will rebuild the .pc file if the version in configure changes.
+.if exists(${PKGDIST.${_pkg}}/configure)
+${_pkg}.pc: ${PKGDIST.${_pkg}}/configure
+.endif
+
+.endfor				# }
 
 # XXX
 # The sed script is very, very ugly.  What we actually need is a

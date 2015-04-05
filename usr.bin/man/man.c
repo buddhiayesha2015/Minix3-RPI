@@ -1,4 +1,4 @@
-/*	$NetBSD: man.c,v 1.41 2010/07/07 21:24:34 christos Exp $	*/
+/*	$NetBSD: man.c,v 1.60 2013/10/28 23:46:17 christos Exp $	*/
 
 /*
  * Copyright (c) 1987, 1993, 1994, 1995
@@ -40,12 +40,13 @@ __COPYRIGHT("@(#) Copyright (c) 1987, 1993, 1994, 1995\
 #if 0
 static char sccsid[] = "@(#)man.c	8.17 (Berkeley) 1/31/95";
 #else
-__RCSID("$NetBSD: man.c,v 1.41 2010/07/07 21:24:34 christos Exp $");
+__RCSID("$NetBSD: man.c,v 1.60 2013/10/28 23:46:17 christos Exp $");
 #endif
 #endif /* not lint */
 
 #include <sys/param.h>
 #include <sys/queue.h>
+#include <sys/stat.h>
 #include <sys/utsname.h>
 
 #include <ctype.h>
@@ -84,7 +85,8 @@ struct manstate {
 	char *pathsearch;	/* -S: path of man must contain this string */
 	char *sectionname;	/* -s: limit search to a given man section */
 	int where;		/* -w: just show paths of all matching files */
-
+	int getpath;	/* -p: print the path of directories containing man pages */
+		
 	/* important tags from the config file */
 	TAG *defaultpath;	/* _default: default MANPATH */
 	TAG *subdirs;		/* _subdir: default subdir search list */
@@ -99,25 +101,26 @@ struct manstate {
 
 	/* other misc stuff */
 	const char *pager;	/* pager to use */
+	size_t pagerlen;	/* length of the above */
 	const char *machine;	/* machine */
 	const char *machclass;	/* machine class */
-	size_t pagerlen;	/* length of the above */
 };
 
 /*
  * prototypes
  */
-static void	 build_page(char *, char **, struct manstate *);
-static void	 cat(char *);
+static void	 build_page(const char *, char **, struct manstate *);
+static void	 cat(const char *);
 static const char	*check_pager(const char *);
 static int	 cleanup(void);
-static void	 how(char *);
-static void	 jump(char **, char *, char *);
+static void	 how(const char *);
+static void	 jump(char **, const char *, const char *) __dead;
 static int	 manual(char *, struct manstate *, glob_t *);
-static void	 onsig(int);
-static void	 usage(void) __attribute__((__noreturn__));
+static void	 onsig(int) __dead;
+static void	 usage(void) __dead;
 static void	 addpath(struct manstate *, const char *, size_t, const char *);
 static const char *getclass(const char *);
+static void printmanpath(struct manstate *);
 
 /*
  * main function
@@ -125,7 +128,7 @@ static const char *getclass(const char *);
 int
 main(int argc, char **argv)
 {
-	static struct manstate m = { 0 }; 	/* init to zero */
+	static struct manstate m;
 	int ch, abs_section, found;
 	ENTRY *esubd, *epath;
 	char *p, **ap, *cmd;
@@ -137,7 +140,7 @@ main(int argc, char **argv)
 	/*
 	 * parse command line...
 	 */
-	while ((ch = getopt(argc, argv, "-aC:cfhkM:m:P:s:S:w")) != -1)
+	while ((ch = getopt(argc, argv, "-aC:cfhkM:m:P:ps:S:w")) != -1)
 		switch (ch) {
 		case 'a':
 			m.all = 1;
@@ -158,6 +161,9 @@ main(int argc, char **argv)
 		case 'M':
 		case 'P':	/* -P for backward compatibility */
 			m.manpath = strdup(optarg);
+			break;
+		case 'p':
+			m.getpath = 1;
 			break;
 		/*
 		 * The -f and -k options are backward compatible,
@@ -187,7 +193,7 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (!argc)
+	if (!m.getpath && !argc)
 		usage();
 
 	/*
@@ -358,6 +364,9 @@ main(int argc, char **argv)
 
 	}
 
+	if (m.getpath) 
+		printmanpath(&m);
+		
 	/*
 	 * now m.mymanpath is complete!
 	 */
@@ -456,33 +465,71 @@ main(int argc, char **argv)
 }
 
 static int
-manual_find_buildkeyword(char *escpage, const char *fmt,
-	struct manstate *mp, glob_t *pg, size_t cnt)
+manual_find_literalfile(struct manstate *mp, char **pv)
 {
 	ENTRY *suffix;
 	int found;
-	char *p, buf[MAXPATHLEN];
+	char buf[MAXPATHLEN];
+	const char *p;
+	int suflen;
 
 	found = 0;
-	/* Try the _build key words next. */
+
+	/*
+	 * Expand both '*' and suffix to force an actual
+	 * match via fnmatch(3). Since the only match in pg
+	 * is the literal file, the match is genuine.
+	 */
+
 	TAILQ_FOREACH(suffix, &mp->buildlist->entrylist, q) {
-		for (p = suffix->s;
+		for (p = suffix->s, suflen = 0;
 		    *p != '\0' && !isspace((unsigned char)*p);
 		    ++p)
-			continue;
+			++suflen;
 		if (*p == '\0')
 			continue;
 
-		*p = '\0';
-		(void)snprintf(buf, sizeof(buf), fmt, escpage, suffix->s);
-		if (!fnmatch(buf, pg->gl_pathv[cnt], 0)) {
+		(void)snprintf(buf, sizeof(buf), "*%.*s", suflen, suffix->s);
+
+		if (!fnmatch(buf, *pv, 0)) {
 			if (!mp->where)
-				build_page(p + 1, &pg->gl_pathv[cnt], mp);
-			*p = ' ';
+				build_page(p + 1, pv, mp);
 			found = 1;
 			break;
-		}      
-		*p = ' ';
+		}
+	}
+
+	return found;
+}
+
+static int
+manual_find_buildkeyword(const char *prefix, const char *escpage,
+    struct manstate *mp, char **pv)
+{
+	ENTRY *suffix;
+	int found;
+	char buf[MAXPATHLEN];
+	const char *p;
+	int suflen;
+
+	found = 0;
+	/* Try the _build keywords next. */
+	TAILQ_FOREACH(suffix, &mp->buildlist->entrylist, q) {
+		for (p = suffix->s, suflen = 0;
+		    *p != '\0' && !isspace((unsigned char)*p);
+		    ++p)
+			++suflen;
+		if (*p == '\0')
+			continue;
+
+		(void)snprintf(buf, sizeof(buf), "%s%s%.*s",
+		    prefix, escpage, suflen, suffix->s);
+		if (!fnmatch(buf, *pv, 0)) {
+			if (!mp->where)
+				build_page(p + 1, pv, mp);
+			found = 1;
+			break;
+		}
 	}
 
 	return found;
@@ -527,10 +574,10 @@ manual(char *page, struct manstate *mp, glob_t *pg)
 	*eptr = '\0';
 
 	/*
-	 * If 'page' is given with a full or relative path
-	 * then interpret it as a file specification.
+	 * If 'page' contains a slash then it's
+	 * interpreted as a file specification.
 	 */
-	if ((page[0] == '/') || (page[0] == '.')) {
+	if (strchr(page, '/') != NULL) {
 		/* check if file actually exists */
 		(void)strlcpy(buf, escpage, sizeof(buf));
 		error = glob(buf, GLOB_APPEND | GLOB_BRACE | GLOB_NOSORT, NULL, pg);
@@ -545,30 +592,14 @@ manual(char *page, struct manstate *mp, glob_t *pg)
 		if (pg->gl_matchc == 0)
 			goto notfound;
 
-		/* clip suffix for the suffix check below */
-		p = strrchr(escpage, '.');
-		if (p && p[0] == '.' && isdigit((unsigned char)p[1]))
-			p[0] = '\0';
-
-		found = 0;
-		for (cnt = pg->gl_pathc - pg->gl_matchc;
-		    cnt < pg->gl_pathc; ++cnt)
-		{
-			found = manual_find_buildkeyword(escpage, "%s%s",
-				mp, pg, cnt);
-			if (found) {
-				anyfound = 1;
-				if (!mp->all) {
-					/* Delete any other matches. */
-					while (++cnt< pg->gl_pathc)
-						pg->gl_pathv[cnt] = "";
-					break;
-				}
-				continue;
-			}
-
+		/* literal file only yields one match */
+		cnt = pg->gl_pathc - pg->gl_matchc;
+ 
+		if (manual_find_literalfile(mp, &pg->gl_pathv[cnt])) {
+			anyfound = 1;
+		} else {
 			/* It's not a man page, forget about it. */
-			pg->gl_pathv[cnt] = "";
+			*pg->gl_pathv[cnt] = '\0';
 		}
 
   notfound:
@@ -617,17 +648,17 @@ manual(char *page, struct manstate *mp, glob_t *pg)
 			if (mp->pathsearch) {
 				p = strstr(pg->gl_pathv[cnt], mp->pathsearch);
 				if (!p || strchr(p, '/') == NULL) {
-					pg->gl_pathv[cnt] = ""; /* zap! */
+					*pg->gl_pathv[cnt] = '\0'; /* zap! */
 					continue;
 				}
 			}
 
 			/*
-			 * Try the _suffix key words first.
+			 * Try the _suffix keywords first.
 			 *
 			 * XXX
-			 * Older versions of man.conf didn't have the suffix
-			 * key words, it was assumed that everything was a .0.
+			 * Older versions of man.conf didn't have the _suffix
+			 * keywords, it was assumed that everything was a .0.
 			 * We just test for .0 first, it's fast and probably
 			 * going to hit.
 			 */
@@ -648,22 +679,22 @@ manual(char *page, struct manstate *mp, glob_t *pg)
 			if (found)
 				goto next;
 
-			/* Try the _build key words next. */
-			found = manual_find_buildkeyword(escpage, "*/%s%s",
-				mp, pg, cnt);
+			/* Try the _build keywords next. */
+			found = manual_find_buildkeyword("*/", escpage,
+				mp, &pg->gl_pathv[cnt]);
 			if (found) {
 next:				anyfound = 1;
 				if (!mp->all) {
 					/* Delete any other matches. */
 					while (++cnt< pg->gl_pathc)
-						pg->gl_pathv[cnt] = "";
+						*pg->gl_pathv[cnt] = '\0';
 					break;
 				}
 				continue;
 			}
 
 			/* It's not a man page, forget about it. */
-			pg->gl_pathv[cnt] = "";
+			*pg->gl_pathv[cnt] = '\0';
 		}
 
 		if (anyfound && !mp->all)
@@ -688,10 +719,11 @@ next:				anyfound = 1;
  *	Build a man page for display.
  */
 static void
-build_page(char *fmt, char **pathp, struct manstate *mp)
+build_page(const char *fmt, char **pathp, struct manstate *mp)
 {
 	static int warned;
-	int olddir, fd, n, tmpdirlen;
+	int olddir, fd, n;
+	size_t tmpdirlen;
 	char *p, *b;
 	char buf[MAXPATHLEN], cmd[MAXPATHLEN], tpath[MAXPATHLEN];
 	const char *tmpdir;
@@ -737,7 +769,7 @@ build_page(char *fmt, char **pathp, struct manstate *mp)
 			}
 
 
-	/* advance fmt pass the suffix spec to the printf format string */
+	/* advance fmt past the suffix spec to the printf format string */
 	for (; *fmt && isspace((unsigned char)*fmt); ++fmt)
 		continue;
 
@@ -749,7 +781,7 @@ build_page(char *fmt, char **pathp, struct manstate *mp)
 		tmpdir = _PATH_TMP;
 	tmpdirlen = strlen(tmpdir);
 	(void)snprintf(tpath, sizeof (tpath), "%s%s%s", tmpdir, 
-	    (tmpdirlen && tmpdir[tmpdirlen-1] == '/') ? "" : "/", TMPFILE);
+	    (tmpdirlen > 0 && tmpdir[tmpdirlen-1] == '/') ? "" : "/", TMPFILE);
 	if ((fd = mkstemp(tpath)) == -1) {
 		warn("%s", tpath);
 		(void)cleanup();
@@ -784,12 +816,13 @@ build_page(char *fmt, char **pathp, struct manstate *mp)
  *	display how information
  */
 static void
-how(char *fname)
+how(const char *fname)
 {
 	FILE *fp;
 
 	int lcnt, print;
-	char *p, buf[256];
+	char buf[256];
+	const char *p;
 
 	if (!(fp = fopen(fname, "r"))) {
 		warn("%s", fname);
@@ -831,9 +864,10 @@ how(char *fname)
  *	cat out the file
  */
 static void
-cat(char *fname)
+cat(const char *fname)
 {
-	int fd, n;
+	int fd;
+	ssize_t n;
 	char buf[2048];
 
 	if ((fd = open(fname, O_RDONLY, 0)) < 0) {
@@ -842,7 +876,7 @@ cat(char *fname)
 		exit(EXIT_FAILURE);
 	}
 	while ((n = read(fd, buf, sizeof(buf))) > 0)
-		if (write(STDOUT_FILENO, buf, n) != n) {
+		if (write(STDOUT_FILENO, buf, (size_t)n) != n) {
 			warn("write");
 			(void)cleanup();
 			exit(EXIT_FAILURE);
@@ -889,11 +923,11 @@ check_pager(const char *name)
  *	strip out flag argument and jump
  */
 static void
-jump(char **argv, char *flag, char *name)
+jump(char **argv, const char *flag, const char *name)
 {
 	char **arg;
 
-	argv[0] = name;
+	argv[0] = __UNCONST(name);
 	for (arg = argv + 1; *arg; ++arg)
 		if (!strcmp(*arg, flag))
 			break;
@@ -984,5 +1018,55 @@ usage(void)
 	(void)fprintf(stderr, 
 	    "Usage: %s -k [-C cfg] [-M path] [-m path] keyword ...\n", 
 	    getprogname());
+	(void)fprintf(stderr, "Usage: %s -p\n", getprogname());
 	exit(EXIT_FAILURE);
+}
+
+/*
+ * printmanpath --
+ *	Prints a list of directories containing man pages.
+ */
+static void
+printmanpath(struct manstate *m)
+{
+	ENTRY *esubd;
+	char *defaultpath = NULL; /* _default tag value from man.conf. */
+	char *buf; /* for storing temporary values */
+	char **ap;
+	glob_t pg;
+	struct stat sb;
+	TAG *path = m->defaultpath;
+	TAG *subdirs = m->subdirs;
+	
+	/* the tail queue is empty if no _default tag is defined in * man.conf */
+	if (TAILQ_EMPTY(&path->entrylist))
+		errx(EXIT_FAILURE, "Empty manpath");
+		
+	defaultpath = TAILQ_LAST(&path->entrylist, tqh)->s;
+	
+	if (glob(defaultpath, GLOB_BRACE | GLOB_NOSORT, NULL, &pg) != 0)
+		err(EXIT_FAILURE, "glob failed");
+
+	if (pg.gl_matchc == 0) {
+		warnx("Default path in %s doesn't exist", _PATH_MANCONF);
+		globfree(&pg);
+		return;
+	}
+
+	TAILQ_FOREACH(esubd, &subdirs->entrylist, q) {
+		/* Drop cat page directory, only sources are relevant. */
+		if (strncmp(esubd->s, "man", 3))
+			continue;
+
+		for (ap = pg.gl_pathv; *ap != NULL; ++ap) {
+			if (asprintf(&buf, "%s%s", *ap, esubd->s) == -1) 
+				err(EXIT_FAILURE, "memory allocation error");
+			/* Skip non-directories. */
+			if (stat(buf, &sb) == 0 && S_ISDIR(sb.st_mode))
+				printf("%s\n", buf);
+
+			free(buf);
+		}
+	}
+	globfree(&pg);
 }

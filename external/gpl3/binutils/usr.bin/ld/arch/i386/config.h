@@ -5,9 +5,16 @@
 /* config.h.  Generated from config.in by configure.  */
 /* config.in.  Generated from configure.in by autoheader.  */
 
+/* Check that config.h is #included before system headers
+   (this works only for glibc, but that should be enough).  */
+#if defined(__GLIBC__) && !defined(__FreeBSD_kernel__) && !defined(__CONFIG_H__)
+#  error config.h must be #included before system headers
+#endif
+#define __CONFIG_H__ 1
+
 /* Define to 1 if translation of program messages to the user's native
    language is requested. */
-#define ENABLE_NLS 1
+/* #undef ENABLE_NLS */
 
 /* Additional extension a shared object might have. */
 /* #undef EXTRA_SHLIB_EXTENSION */
@@ -65,6 +72,9 @@
 
 /* Define to 1 if you have the `glob' function. */
 #define HAVE_GLOB 1
+
+/* Define .init_array/.fini_array sections are available and working. */
+/* #undef HAVE_INITFINI_ARRAY */
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
@@ -134,7 +144,7 @@
 /* Define to 1 if you have the `waitpid' function. */
 #define HAVE_WAITPID 1
 
-/* Define to 1 if you have the <Windows.h> header file. */
+/* Define to 1 if you have the <windows.h> header file. */
 /* #undef HAVE_WINDOWS_H */
 
 /* Define to 1 if you have the <zlib.h> header file. */
@@ -165,11 +175,14 @@
 /* Define to the version of this package. */
 #define PACKAGE_VERSION ""
 
-/* The size of `long', as computed by sizeof. */
-/* #undef SIZEOF_LONG */
+/* The size of `void *', as computed by sizeof. */
+#define SIZEOF_VOID_P 4
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
+
+/* Define if you can safely include both <string.h> and <strings.h>. */
+#define STRING_WITH_STRINGS 1
 
 /* Use b modifier when opening binary files? */
 /* #undef USE_BINARY_FOPEN */
@@ -197,7 +210,7 @@
 
 
 /* Version number of package */
-#define VERSION "2.21.1"
+#define VERSION "2.23.2"
 
 /* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
    `char[]'. */
@@ -210,11 +223,11 @@
 /* #undef _LARGE_FILES */
 
 /* Define to 1 if on MINIX. */
-/* #undef _MINIX */
+#define _MINIX 1
 
 /* Define to 2 if the system does not provide POSIX.1 features except with
    this defined. */
-/* #undef _POSIX_1_SOURCE */
+#define _POSIX_1_SOURCE 2
 
 /* Define to 1 if you need to in order for `stat' and other things to work. */
-/* #undef _POSIX_SOURCE */
+#define _POSIX_SOURCE 1

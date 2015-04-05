@@ -3,36 +3,40 @@
 
 # gen sources
 .if defined(__MINIX)
-.PATH: ${.CURDIR}/gen/minix
-.endif
+.PATH: ${NETBSDSRCDIR}/minix/lib/libc/gen
+
+CPPFLAGS.fslib.c+= -I${NETBSDSRCDIR}/minix/fs
+CPPFLAGS.fsversion.c+= -I${NETBSDSRCDIR}/minix/fs
+
+SRCS+= dhcp_gettag.c dhcp_settag.c fsversion.c gcov.c gcov_flush.c itoa.c \
+	oneC_sum.c paramvalue.c read_tsc_64.c servxcheck.c fslib.c
+
+.endif # defined(__MINIX)
 .PATH: ${ARCHDIR}/gen ${.CURDIR}/gen
 
 .if defined(__MINIX)
 # Unsupported by Minix.
-# 	closefrom.c confstr.c extattr.c getdevmajor.c getmntinfo.c \
-#	pthread_atfork.c setdomainname.c sethostname.c setproctitle.c \
-#	sysctl.c sysctlbyname.c sysctlgetmibinfo.c sysctlnametomib.c \
-#	devname.c wait3.c
+# 	closefrom.c confstr.c extattr.c getdevmajor.c \
+#	pthread_atfork.c setdomainname.c \
+#	sysctlbyname.c sysctlgetmibinfo.c sysctlnametomib.c
+#	wait3.c
 
 # To be ported
 # nlist.c nlist_aout.c nlist_coff.c nlist_ecoff.c nlist_elf32.c nlist_elf64.c
 #
 # Not useful but portable
 #	disklabel.c
-#
-# Already in getprogname
-#	setprogname.c
 
 SRCS+= 	_errno.c alarm.c alphasort.c arc4random.c assert.c basename.c clock.c \
 	closedir.c \
 	ctermid.c ctype_.c daemon.c \
-	dehumanize_number.c dirname.c err.c errx.c \
+	dehumanize_number.c devname.c dirname.c err.c errx.c \
 	errlist.c errno.c execl.c execle.c execlp.c execv.c execvp.c \
 	fmtcheck.c fmtmsg.c fnmatch.c fstab.c ftok.c \
 	fts.c ftw.c getbsize.c getcap.c getcwd.c \
 	getdomainname.c getgrent.c \
 	getgrouplist.c getgroupmembership.c gethostname.c \
-	getloadavg.c getlogin.c \
+	getloadavg.c getlogin.c getmntinfo.c \
 	getnetgrent.c getpagesize.c \
 	getpass.c getprogname.c getpwent.c getttyent.c \
 	getusershell.c glob.c humanize_number.c initdir.c initgroups.c \
@@ -42,11 +46,11 @@ SRCS+= 	_errno.c alarm.c alphasort.c arc4random.c assert.c basename.c clock.c \
 	psignal.c \
 	ptree.c pwcache.c pw_scan.c raise.c randomid.c rb.c readdir.c \
 	rewinddir.c scandir.c seekdir.c \
-	setjmperr.c setmode.c \
+	sethostname.c setjmperr.c setmode.c setproctitle.c setprogname.c \
 	shquote.c shquotev.c sighold.c sigignore.c siginterrupt.c \
 	siglist.c signal.c signame.c sigrelse.c \
 	sigset.c sigsetops.c sleep.c \
-	stringlist.c sysconf.c \
+	stringlist.c sysconf.c sysctl.c \
 	syslog.c telldir.c time.c \
 	times.c toascii.c tolower_.c ttyname.c ttyslot.c toupper_.c ualarm.c \
 	ulimit.c uname.c unvis.c usleep.c utime.c utimens.c utmp.c \

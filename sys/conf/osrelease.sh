@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-#	$NetBSD: osrelease.sh,v 1.120 2009/11/15 18:41:08 dsl Exp $
+#	$NetBSD: osrelease.sh,v 1.122 2012/02/16 23:56:57 christos Exp $
 #
 # Copyright (c) 1997 The NetBSD Foundation, Inc.
 # All rights reserved.
@@ -32,13 +32,12 @@
 
 # We use the number specified in <sys/param.h>
 
-
 path="$0"
 [ "${path#/*}" = "$path" ] && path="./$path"
 
-release=`grep OS_RELEASE ${path%/*}/../../include/minix/config.h | awk '{ print $3} ' | tr -d '"'`
-major=`grep OS_VERSION ${path%/*}/../../include/minix/config.h | awk '{ print $3 }' | tr -d '"'  | awk -F. ' { print $1 }'`
-minor=`grep OS_VERSION ${path%/*}/../../include/minix/config.h | awk '{ print $3 }' | tr -d '"'  | awk -F. ' { print $2 }'`
+release=`grep "define OS_RELEASE" ${path%/*}/../../minix/include/minix/config.h | awk '{ print $3} ' | tr -d '"'  | awk -F. ' { print $1 }'`
+major=`grep "define OS_RELEASE" ${path%/*}/../../minix/include/minix/config.h | awk '{ print $3 }' | tr -d '"'  | awk -F. ' { print $2 }'`
+minor=`grep "define OS_RELEASE" ${path%/*}/../../minix/include/minix/config.h | awk '{ print $3 }' | tr -d '"'  | awk -F. ' { print $3 }'`
 
 
 case "$option" in

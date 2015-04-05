@@ -163,7 +163,7 @@
 
 /* Define if gthr-default.h exists (meaning that threading support is
    enabled). */
-#define HAVE_GTHR_DEFAULT 1
+/* #undef HAVE_GTHR_DEFAULT */
 
 /* Define to 1 if you have the `hypot' function. */
 /* #undef HAVE_HYPOT */
